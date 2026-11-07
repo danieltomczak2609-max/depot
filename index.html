@@ -236,6 +236,22 @@ body.snap .top .actions{display:none}
 .bill-r .mono{font-size:14px;white-space:nowrap}
 .bill-r.sum{font-weight:700;border-top:2px solid var(--muted);margin-top:2px;padding-top:8px}
 .bill-r.sum .mono{font-size:16px}
+@media (min-width:1100px){
+  .wrap{max-width:1760px;padding:28px 40px 64px}
+  #pos-table .asset .n{max-width:340px}
+  #pos-table td,#pos-table th{padding-left:12px;padding-right:12px}
+  .share2{grid-template-columns:110px auto}
+}
+@media (min-width:1100px) and (max-width:1399px){
+  .wrap{padding-left:20px;padding-right:20px}
+  #pos-table .asset .n{max-width:200px}
+  #pos-table td,#pos-table th{padding-left:7px;padding-right:7px;font-size:13px}
+  .share2{grid-template-columns:70px auto}
+}
+@media (min-width:1600px){
+  .wrap{padding-left:56px;padding-right:56px}
+  .kpi .v{font-size:19px}
+}
 .pill.info{background:var(--accent-soft);color:var(--accent)}
 .srcline{font-size:12px;color:var(--muted)}
 .pill.flat{background:var(--surface-2);color:var(--muted)}
@@ -582,7 +598,7 @@ function niceTicks(min,max,count){
 }
 function lineChart(host,{dates,lines,fmt,height,zero,tipRows}){
   host.innerHTML="";
-  const W=Math.max(280,host.clientWidth-16), H=height||(isMobile()?230:280), padL=8, padR=isMobile()?48:64, padT=12, padB=26;
+  const W=Math.max(280,host.clientWidth-16), H=height||(isMobile()?230:Math.round(Math.min(440,Math.max(280,W*0.27)))), padL=8, padR=isMobile()?48:64, padT=12, padB=26;
   const n=dates.length;
   if(n<2){ host.innerHTML='<div class="empty-chart">Noch zu wenige Daten für einen Verlauf.</div>'; return; }
   let mn=Infinity,mx=-Infinity; for(const l of lines) for(const v of l.values){ if(v<mn)mn=v; if(v>mx)mx=v; }
@@ -1236,7 +1252,7 @@ async function snapDecrypt(f,key){
 
 /* ---------- Handy-Ansicht (nur lesen) ---------- */
 const SNAP=!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const BUILD="e429150b1d56";
+const BUILD="11aeef39d03d";
 // Ist die Seite älter als der Depotstand, einmal mit neuer Adresse laden (umgeht den Zwischenspeicher)
 function snapCheckBuild(obj){
   if(!obj||!obj.build||BUILD===obj.build||BUILD.indexOf("DEPOT_")>=0)return false;
