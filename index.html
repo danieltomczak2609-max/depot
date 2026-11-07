@@ -1229,6 +1229,15 @@ async function snapDecrypt(f,key){
 
 /* ---------- Handy-Ansicht (nur lesen) ---------- */
 const SNAP=!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+const BUILD="c86bd06168d4";
+// Ist die Seite älter als der Depotstand, einmal mit neuer Adresse laden (umgeht den Zwischenspeicher)
+function snapCheckBuild(obj){
+  if(!obj||!obj.build||BUILD===obj.build||BUILD.indexOf("DEPOT_")>=0)return false;
+  const key="depot.reloaded."+obj.build;
+  try{ if(sessionStorage.getItem(key))return false; sessionStorage.setItem(key,"1"); }catch(e){ return false; }
+  location.replace(location.pathname+"?b="+obj.build);
+  return true;
+}
 let SNAPFILE=null;
 function snapKeyGet(){ try{ return JSON.parse(localStorage.getItem("depot.key")||"null"); }catch(e){ return null; } }
 function snapKeySet(v){ try{ v?localStorage.setItem("depot.key",JSON.stringify(v)):localStorage.removeItem("depot.key"); }catch(e){} }
@@ -1239,6 +1248,7 @@ async function snapFetch(){
   return r.json();
 }
 function snapApply(obj){
+  if(snapCheckBuild(obj))return;
   S.tx=(obj.transactions||[]).map(t=>({...t,symbol:t.asset}));
   S.assets=obj.assets||{}; S.quotes=obj.quotes||{}; S.bench=obj.bench||null; S.logos=obj.logos||{}; S.status=obj.status||{};
   S.snapAt=obj.snapshotAt; S.offline=false; S.err=null; S.loaded={tx:true,assets:true,quotes:true};
