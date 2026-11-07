@@ -164,11 +164,11 @@ body.snap .top .actions{display:none}
 .m-right b{font-family:var(--f-num);font-weight:500;font-size:15px;letter-spacing:-.03em;white-space:nowrap}
 .m-right .t{font-size:12px;color:var(--muted)}
 .m-pl{font-family:var(--f-num);font-size:12px;white-space:nowrap}
-.m-bars{grid-column:2/4;display:grid;grid-template-columns:1fr 74px;gap:4px 10px;align-items:center;margin-top:6px}
+.m-bars{grid-column:2/4;display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;margin-top:6px}
 .m-bars .bt{height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden}
 .m-bars .bt i{display:block;height:100%;border-radius:3px}
 .m-bars .bt.inv i{background:var(--muted);opacity:.5}
-.m-bars .lbl{font-family:var(--f-num);font-size:11px;text-align:right;min-width:62px}
+.m-bars .lbl{font-family:var(--f-num);font-size:11px;text-align:right;min-width:78px;white-space:nowrap}
 .m-day{font-family:var(--f-num);font-size:11px;text-align:right;white-space:nowrap}
 .m-link{background:none;border:0;color:var(--accent);font-weight:600;font-size:14px;padding:12px;align-self:center}
 .m-search input{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 13px;font-size:16px}
@@ -197,6 +197,39 @@ body.snap .top .actions{display:none}
 .m-refresh{background:var(--surface);border:1px solid var(--line);border-radius:999px;width:28px;height:28px;margin-left:6px;font-size:15px;line-height:1;color:var(--accent);display:inline-grid;place-items:center}
 .m-refresh:disabled{opacity:.5;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+@keyframes sheetUp{from{transform:translateY(40px);opacity:.6}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){body .dialog{animation:none}}
+.m-alloc2{display:grid;grid-template-columns:116px 1fr;gap:18px;align-items:center;padding:16px;text-align:left;width:100%;color:inherit}
+.m-ring{position:relative;width:116px;height:116px;display:block}
+.m-ring svg{display:block}
+.m-ring .c,.sheet-ring .c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;text-align:center}
+.m-ring .c b{font-family:var(--f-num);font-size:24px;font-weight:500;line-height:1}
+.m-ring .c small{font-size:11px;color:var(--muted);margin-top:2px}
+.m-alloc-l{display:flex;flex-direction:column;gap:7px;min-width:0}
+.m-alloc-l .h{font-weight:700;font-size:16px;margin-bottom:2px}
+.m-alloc-l .r{display:flex;align-items:center;gap:8px;font-size:14px;min-width:0}
+.m-alloc-l .r i{width:9px;height:9px;border-radius:3px;flex:none}
+.m-alloc-l .r .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.m-alloc-l .r b{margin-left:auto;font-family:var(--f-num);font-weight:500;font-size:13px}
+.m-alloc-l .more{color:var(--accent);font-weight:600;font-size:13px;margin-top:2px}
+.sheet-ring{position:relative;width:230px;height:230px;margin:4px auto 0}
+.sheet-ring svg circle[data-i]{cursor:pointer;transition:stroke-width .15s,opacity .15s}
+.sheet-ring .c{padding:40px}
+.sheet-ring .c b{font-family:var(--f-num);font-size:24px;font-weight:500;letter-spacing:-.03em}
+.sheet-ring .c small{font-size:12px;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.alloc-list{display:flex;flex-direction:column}
+.alloc-row{display:grid;grid-template-columns:32px minmax(0,1fr) 110px;gap:12px;align-items:center;background:none;border:0;border-top:1px solid var(--line);padding:10px 4px;text-align:left;width:100%;border-radius:10px}
+.alloc-row:first-child{border-top:0}
+.alloc-row.on{background:var(--accent-soft)}
+.alloc-pct{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.alloc-pct b{font-family:var(--f-num);font-weight:500;font-size:14px}
+.alloc-pct .bt{width:100%;height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden}
+.alloc-pct .bt i{display:block;height:100%;border-radius:3px}
+@media (max-width:640px){
+  body .overlay{align-items:flex-end;padding:0;padding-top:max(24px,env(safe-area-inset-top,0px))}
+  body .dialog{border-radius:20px 20px 0 0;max-height:92vh;overflow-y:auto;border-bottom:0;padding-bottom:env(safe-area-inset-bottom,0px);animation:sheetUp .22s ease-out}
+  body .dialog header{position:sticky;top:0;background:var(--surface);z-index:2;border-radius:20px 20px 0 0}
+}
 .pill.info{background:var(--accent-soft);color:var(--accent)}
 .srcline{font-size:12px;color:var(--muted)}
 .pill.flat{background:var(--surface-2);color:var(--muted)}
@@ -1431,10 +1464,12 @@ function renderOverviewMobile(v){
   </div>
   <p class="m-fine">Gebühren ${eur(k.fees)} · Steuern ${eur(k.taxes)}</p>
 
-  ${open.length?`<section class="card m-alloc"><div class="m-sec-h"><h2>Woraus dein Depot besteht</h2><span class="muted">${open.length} Positionen</span></div>
-    <div class="m-stackbar">${top.map(p=>`<i style="width:${(p.share*100).toFixed(2)}%;background:${p._col}" title="${esc(shortNm(p))}"></i>`).join("")}${rest.length?`<i style="width:${(restShare*100).toFixed(2)}%;background:var(--line)"></i>`:""}</div>
-    <div class="m-legend">${top.map(p=>`<span><i style="background:${p._col}"></i>${esc(shortNm(p))}<b>${nfP1.format(p.share)}</b></span>`).join("")}${rest.length?`<span><i style="background:var(--line)"></i>Übrige (${rest.length})<b>${nfP1.format(restShare)}</b></span>`:""}</div>
-  </section>`:""}
+  ${open.length?`<button type="button" class="card m-alloc2" id="m-alloc" aria-label="Aufteilung anzeigen">
+    <span class="m-ring">${ringSvg(open.map((p,i)=>({share:p.share,col:p._col})),116,16,null)}<span class="c"><b>${open.length}</b><small>Positionen</small></span></span>
+    <span class="m-alloc-l"><span class="h">Aufteilung</span>
+      ${open.slice(0,4).map(p=>`<span class="r"><i style="background:${p._col}"></i><span class="nm">${esc(shortNm(p))}</span><b>${nfP1.format(p.share)}</b></span>`).join("")}
+      <span class="more">Alle anzeigen ›</span></span>
+  </button>`:""}
 
   <section class="m-positions" aria-label="Positionen">
     <div class="m-sec-h"><h2>Positionen</h2>
@@ -1455,8 +1490,50 @@ function renderOverviewMobile(v){
   v.querySelectorAll("#seg-range button").forEach(b=>b.onclick=()=>{S.range=b.dataset.r;saveUi();render();});
   v.querySelectorAll("#m-sort button").forEach(b=>b.onclick=()=>{S.msort=b.dataset.s;render();});
   v.querySelectorAll(".m-pos").forEach(b=>b.onclick=()=>openAsset(b.dataset.sym));
+  if(v.querySelector("#m-alloc")) v.querySelector("#m-alloc").onclick=openAllocSheet;
   if(v.querySelector("#m-closed")) v.querySelector("#m-closed").onclick=()=>{S.showClosed=!S.showClosed;render();};
   drawMainChart();
+}
+
+/* Ringdiagramm für die Aufteilung (Handy) */
+function ringSvg(items,size,thick,sel){
+  const r=(size-thick)/2, c=2*Math.PI*r, gap=items.length>1?Math.min(3,c/items.length/4):0;
+  let off=0, s=`<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" aria-hidden="true"><g transform="rotate(-90 ${size/2} ${size/2})">`;
+  s+=`<circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--surface-2)" stroke-width="${thick}"/>`;
+  items.forEach((it,i)=>{
+    const len=Math.max(0.6,it.share*c-gap);
+    const dim=sel!=null&&sel!==i;
+    s+=`<circle data-i="${i}" cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${it.col}" stroke-width="${sel===i?thick+6:thick}" stroke-dasharray="${len.toFixed(2)} ${(c-len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" opacity="${dim?.28:1}"/>`;
+    off+=it.share*c;
+  });
+  return s+"</g></svg>";
+}
+function allocItems(){
+  const open=Object.values(M.pos).filter(p=>p.qty>1e-9).sort((a,b)=>b.value-a.value);
+  return open.map((p,i)=>({p,share:p.share,col:posColor(i)}));
+}
+function openAllocSheet(){
+  const items=allocItems(), V=M.k.value;
+  const d=showModal(`<header><h3>Aufteilung deines Depots</h3><button class="btn ghost small" data-close type="button" aria-label="Schließen">✕</button></header>
+    <div class="body" style="gap:16px">
+      <div class="sheet-ring"><div id="ring-big"></div><div class="c" id="ring-c"></div></div>
+      <div class="alloc-list">${items.map((it,i)=>`<button type="button" class="alloc-row" data-i="${i}">
+        ${logoTile(it.p,32,it.col)}
+        <span class="m-main"><span class="n">${esc(shortNm(it.p))}</span><span class="t">${eur(it.p.value)}</span></span>
+        <span class="alloc-pct"><b>${nfP1.format(it.share)}</b><span class="bt"><i style="width:${(it.share/items[0].share*100).toFixed(1)}%;background:${it.col}"></i></span></span>
+      </button>`).join("")}</div>
+    </div>`);
+  let sel=null;
+  const draw=()=>{
+    d.querySelector("#ring-big").innerHTML=ringSvg(items,230,30,sel);
+    const c=d.querySelector("#ring-c");
+    if(sel==null) c.innerHTML=`<small>Depotwert</small><b>${eur0(V)}</b><small>${items.length} Positionen</small>`;
+    else { const it=items[sel]; c.innerHTML=`<small>${esc(shortNm(it.p))}</small><b>${eur0(it.p.value)}</b><small style="color:${it.col};font-weight:700">${nfP1.format(it.share)}</small>`; }
+    d.querySelectorAll(".alloc-row").forEach(b=>b.classList.toggle("on",+b.dataset.i===sel));
+    d.querySelectorAll("#ring-big circle[data-i]").forEach(ci=>ci.onclick=()=>{ sel=sel===+ci.dataset.i?null:+ci.dataset.i; draw(); });
+  };
+  d.querySelectorAll(".alloc-row").forEach(b=>b.onclick=()=>{ const i=+b.dataset.i; sel=sel===i?null:i; draw(); });
+  draw();
 }
 
 const TX_ICON={buy:"＋",sell:"−",dividend:"%",interest:"€"};
