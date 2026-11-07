@@ -229,6 +229,13 @@ body.snap .top .actions{display:none}
   body .dialog{border-radius:20px 20px 0 0;max-height:92vh;overflow-y:auto;border-bottom:0;padding-bottom:env(safe-area-inset-bottom,0px);animation:sheetUp .22s ease-out}
   body .dialog header{position:sticky;top:0;background:var(--surface);z-index:2;border-radius:20px 20px 0 0}
 }
+.bill{display:flex;flex-direction:column;gap:0;background:var(--surface-2);border-radius:10px;padding:12px 14px}
+.bill .eyebrow{margin-bottom:6px}
+.bill-r{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-top:1px solid var(--line);font-size:14px}
+.bill-r:nth-child(2){border-top:0}
+.bill-r .mono{font-size:14px;white-space:nowrap}
+.bill-r.sum{font-weight:700;border-top:2px solid var(--muted);margin-top:2px;padding-top:8px}
+.bill-r.sum .mono{font-size:16px}
 .pill.info{background:var(--accent-soft);color:var(--accent)}
 .srcline{font-size:12px;color:var(--muted)}
 .pill.flat{background:var(--surface-2);color:var(--muted)}
@@ -1229,7 +1236,7 @@ async function snapDecrypt(f,key){
 
 /* ---------- Handy-Ansicht (nur lesen) ---------- */
 const SNAP=!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const BUILD="c86bd06168d4";
+const BUILD="e429150b1d56";
 // Ist die Seite älter als der Depotstand, einmal mit neuer Adresse laden (umgeht den Zwischenspeicher)
 function snapCheckBuild(obj){
   if(!obj||!obj.build||BUILD===obj.build||BUILD.indexOf("DEPOT_")>=0)return false;
@@ -1734,6 +1741,17 @@ function openAsset(sym){
       ${metric("Realisiert",`<span class="${cls(p.realized)}">${eur(p.realized,true)}</span>`,"aus Verkäufen")}
       ${metric("Gesamtergebnis",`<span class="${cls(p.total)}">${eur(p.total,true)}</span>`,"inkl. Dividenden "+eur(p.divs))}
     </div>
+    ${(()=>{ let buy=0,sell=0,inc=0,fee=0,tax=0; txs.forEach(t=>{ const a=txAmount(t); if(t.type==="buy")buy+=a; else if(t.type==="sell")sell+=a; else inc+=a; fee+=+t.fee||0; tax+=+t.tax||0; });
+      const net=sell-buy+inc-fee-tax+(p.qty>1e-9?p.value:0);
+      return `<div class="bill"><span class="eyebrow">Abrechnung</span>
+        <div class="bill-r"><span>Kaufkosten gesamt</span><span class="mono">${eur(buy)}</span></div>
+        <div class="bill-r"><span>Verkaufserlös gesamt</span><span class="mono">${eur(sell)}</span></div>
+        ${inc?`<div class="bill-r"><span>Dividenden brutto</span><span class="mono">${eur(inc)}</span></div>`:""}
+        ${p.qty>1e-9?`<div class="bill-r"><span>Wert heute (noch im Depot)</span><span class="mono">${eur(p.value)}</span></div>`:""}
+        <div class="bill-r"><span>Gebühren gesamt</span><span class="mono ${fee?"neg":""}">${eur(fee?-fee:0)}</span></div>
+        <div class="bill-r"><span>Steuern gesamt</span><span class="mono ${tax?"neg":""}">${eur(tax?-tax:0)}</span></div>
+        <div class="bill-r sum"><span>Netto-Ergebnis</span><span class="mono ${cls(net)}">${eur(net,true)}</span></div>
+      </div>`; })()}
     ${q.error?`<span class="pill warn" style="align-self:flex-start">Letzter Kursabruf fehlgeschlagen: ${esc(q.error)}</span>`:""}
     <div class="chart" id="asset-chart" style="padding:0"></div>
     <div class="tbl-wrap"><table><thead><tr><th>Datum</th><th>Typ</th><th class="r">Stück</th><th class="r">Kurs</th><th class="r">Betrag</th><th>Broker</th><th></th></tr></thead>
