@@ -194,6 +194,9 @@ body.snap .top .actions{display:none}
 .lg.ini{color:#fff;font-weight:800;font-size:calc(var(--s) * .34);letter-spacing:.02em;box-shadow:none}
 .asset-row{display:flex;align-items:center;gap:9px;min-width:0}
 #pos-table .asset .n{max-width:210px}
+.m-refresh{background:var(--surface);border:1px solid var(--line);border-radius:999px;width:28px;height:28px;margin-left:6px;font-size:15px;line-height:1;color:var(--accent);display:inline-grid;place-items:center}
+.m-refresh:disabled{opacity:.5;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 .pill.info{background:var(--accent-soft);color:var(--accent)}
 .srcline{font-size:12px;color:var(--muted)}
 .pill.flat{background:var(--surface-2);color:var(--muted)}
@@ -607,7 +610,7 @@ function renderHeader(){
   const old=!lr||(Date.now()-Date.parse(lr))>12*36e5;
   el.innerHTML=`<span class="pill ${cls(k.profit)||"flat"}">${eur(k.profit,true)} · ${pct(k.twr)}</span>
     <span class="${cls(k.day)}">${eur(k.day,true)} (${pct(k.dayPct)}) seit gestern</span>
-    <span class="status-line">${SNAP?`<span class="live ${S.snapAt&&(Date.now()-Date.parse(S.snapAt))>12*36e5?"old":""}"></span>Stand vom Mac ${S.snapAt?ageText(S.snapAt):""} · nur ansehen</span>`:`<span class="live ${old&&!S.status.running?"old":""}"></span>${S.status.running?"Kurse werden abgerufen …"+(S.status.progress?" ("+esc(S.status.progress)+")":""):age?"Kurse aktualisiert "+age:"Noch keine Kurse abgerufen"}</span>`}`;
+    <span class="status-line">${SNAP?snapStatus():`<span class="live ${old&&!S.status.running?"old":""}"></span>${S.status.running?"Kurse werden abgerufen …"+(S.status.progress?" ("+esc(S.status.progress)+")":""):age?"Kurse aktualisiert "+age:"Noch keine Kurse abgerufen"}</span>`}`;
 }
 function renderBanner(){
   const b=document.getElementById("banner"), out=[];
@@ -1232,7 +1235,7 @@ function snapLockScreen(msg){
       const key=await snapDeriveKey(v.querySelector("#pw").value,b64d(SNAPFILE.salt),SNAPFILE.iter||600000);
       const obj=await snapDecrypt(SNAPFILE,key);
       if(v.querySelector("#pw-keep").checked) snapKeySet({salt:SNAPFILE.salt,key:b64eJs(key)});
-      S.snapKey=key; snapApply(obj);
+      S.snapKey=key; snapApply(obj); snapLive(false);
     }catch(e2){ err.textContent=e2.message||"Entsperren fehlgeschlagen."; btn.disabled=false; btn.textContent="Entsperren"; }
   };
 }
@@ -1244,10 +1247,78 @@ async function snapLoad(silent){
   if(!key&&kept&&kept.salt===SNAPFILE.salt) key=b64d(kept.key);
   if(key&&S.snapKey&&!silent){}
   if(!key||(S.snapKey&&kept&&kept.salt!==SNAPFILE.salt)){ if(!silent||!S.snapKey) snapLockScreen(); return; }
-  try{ S.snapKey=key; snapApply(await snapDecrypt(SNAPFILE,key)); }
+  try{ S.snapKey=key; snapApply(await snapDecrypt(SNAPFILE,key)); snapLive(false); }
   catch(e){ snapKeySet(null); S.snapKey=null; snapLockScreen(e.code==="badpw"?"Das Passwort wurde am Mac geändert. Bitte neu eingeben.":e.message); }
 }
 function snapLock(){ snapKeySet(null); S.snapKey=null; S.tx=[]; S.assets={}; S.quotes={}; S.bench=null; snapLockScreen(); renderFoot(); }
+
+/* ---------- Handy: Kurse direkt bei onvista holen ---------- */
+const OVB="https://api.onvista.de/api/v1";
+const BENCH_NOTATION=262733170, BENCH_TYPE="FUND", BENCH_ID="156424987";
+const fxCache={};
+async function ovGet(url){ const r=await fetch(url,{cache:"no-store"}); if(!r.ok) throw new Error("onvista "+r.status); return r.json(); }
+function normCur(c){ if(c==="GBp"||c==="GBX")return ["GBP",0.01]; if(c==="ZAc"||c==="ZAC")return ["ZAR",0.01]; if(c==="ILA")return ["ILS",0.01]; return [(c||"EUR").toUpperCase(),1]; }
+async function ecbSeries(cur,from){
+  const key=cur+"|"+from; if(fxCache[key])return fxCache[key];
+  const r=await fetch(`https://data-api.ecb.europa.eu/service/data/EXR/D.${cur}.EUR.SP00.A?startPeriod=${from}&format=csvdata`);
+  if(!r.ok) throw new Error("EZB "+r.status);
+  const L=(await r.text()).trim().split(/\r?\n/), H=L[0].split(","), it=H.indexOf("TIME_PERIOD"), iv=H.indexOf("OBS_VALUE"), m={};
+  L.slice(1).forEach(l=>{ const p=l.split(","), v=parseFloat(p[iv]); if(v>0)m[p[it]]=v; });
+  return fxCache[key]=m;
+}
+function rateOn(fx,d){ if(!fx)return 1; const ks=Object.keys(fx).sort(); let r=null; for(const k of ks){ if(k<=d)r=fx[k]; else break; } return r||fx[ks[ks.length-1]]||1; }
+async function fillGap(type,id,notation,hist,factor,fx){
+  const ks=Object.keys(hist).sort(), last=ks[ks.length-1], today=localToday();
+  if(!last||dnum(today)-dnum(last)<=3)return;
+  const eod=await ovGet(`${OVB}/instruments/${type}/${encodeURIComponent(id)}/eod_history?idNotation=${notation}&range=Y1&startDate=${dstr(dnum(last)+1)}`);
+  (eod.datetimeLast||[]).forEach((t,i)=>{ const v=(eod.last||[])[i]; if(v==null)return; const d=new Date(t*1000).toISOString().slice(0,10); hist[d]=v*factor/rateOn(fx,d); });
+}
+async function liveAsset(a,q){
+  const snap=await ovGet(`${OVB}/instruments/${a.ovType}/${encodeURIComponent(a.ovId)}/snapshot`);
+  const list=(snap.quoteList&&snap.quoteList.list)||[];
+  const qe=list.find(x=>x.market&&String(x.market.idNotation)===String(a.notation))||snap.quote;
+  if(!qe||qe.last==null) throw new Error("kein Kurs");
+  const [cur,f]=normCur(qe.isoCurrency||a.currency), today=localToday();
+  const hist=q.hist||(q.hist={}), ks=Object.keys(hist).sort(), last=ks[ks.length-1];
+  const fx=cur==="EUR"?null:await ecbSeries(cur,dstr((last?dnum(last):dnum(today)-30)-10));
+  try{ await fillGap(a.ovType,a.ovId,a.notation,hist,f,fx); }catch(e){}
+  const pe=qe.last*f/rateOn(fx,today);
+  hist[today]=pe;
+  Object.assign(q,{priceEur:pe,price:qe.last,currency:cur,asOf:qe.datetimeLast?new Date(qe.datetimeLast).toISOString():new Date().toISOString(),source:"onvista · live am Handy",error:null});
+}
+async function liveBench(){
+  if(!S.bench||!S.bench.hist)return;
+  const hist=S.bench.hist;
+  try{ await fillGap(BENCH_TYPE,BENCH_ID,BENCH_NOTATION,hist,1,null); }catch(e){}
+  const snap=await ovGet(`${OVB}/instruments/${BENCH_TYPE}/${BENCH_ID}/snapshot`);
+  const qe=((snap.quoteList&&snap.quoteList.list)||[]).find(x=>x.market&&x.market.idNotation===BENCH_NOTATION);
+  if(qe&&qe.last!=null) hist[localToday()]=qe.last;
+}
+async function snapLive(manual){
+  if(!SNAP||!S.snapKey||S.liveBusy)return;
+  S.liveBusy=true;
+  let ok=0, fail=0;
+  try{
+    M=compute(); renderHeader();
+    const ids=Object.keys(S.assets).filter(id=>{ const a=S.assets[id], p=M.pos[id]; return a&&a.ovId&&a.notation&&p&&p.qty>1e-9; });
+    for(let i=0;i<ids.length;i+=4){
+      await Promise.all(ids.slice(i,i+4).map(async id=>{ try{ await liveAsset(S.assets[id],S.quotes[id]||(S.quotes[id]={})); ok++; }catch(e){ fail++; } }));
+    }
+    try{ await liveBench(); }catch(e){}
+  }catch(e){ console.error(e); }
+  finally{
+    S.liveBusy=false; S.liveFail=fail;
+    if(ok) S.liveAt=Date.now();
+    schedule();
+  }
+  if(manual) toast(!ok?"Kurse gerade nicht erreichbar. Angezeigt wird der Stand vom Mac.":fail?`${ok} Kurse aktualisiert, ${fail} nicht erreichbar`:"Kurse aktualisiert");
+}
+function snapStatus(){
+  const t=S.liveAt?new Date(S.liveAt).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}):null;
+  const txt=S.liveBusy?"Kurse werden geladen …":t?`Kurse live von ${t} Uhr${S.liveFail?` · ${S.liveFail} ohne Kurs`:""}`:`Stand vom Mac ${S.snapAt?ageText(S.snapAt):""}`;
+  return `<span class="live ${S.liveBusy||t?"":"old"}"></span>${txt}<button type="button" class="m-refresh" id="btn-live" ${S.liveBusy?"disabled":""} aria-label="Kurse aktualisieren">↻</button></span>`;
+}
+document.addEventListener("click",e=>{ if(e.target&&e.target.id==="btn-live") snapLive(true); });
 
 /* ---------- Mac: Handy-Zugriff einrichten ---------- */
 function genPassphrase(){
@@ -1692,7 +1763,8 @@ let rz=0; window.addEventListener("resize",()=>{ clearTimeout(rz); rz=setTimeout
 if(window.matchMedia) window.matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",schedule);
 if(SNAP){
   document.body.classList.add("snap");
-  document.addEventListener("visibilitychange",()=>{ if(!document.hidden&&S.snapKey&&Date.now()-(S.snapLoadedAt||0)>3*60e3) snapLoad(true); });
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden&&S.snapKey&&Date.now()-(S.liveAt||S.snapLoadedAt||0)>15*60e3) snapLoad(true); });
+  setInterval(()=>{ if(!document.hidden&&S.snapKey) snapLive(false); },4*3600e3);
   snapLoad(false);
 }else{
   document.addEventListener("visibilitychange",()=>{ if(!document.hidden)poll(); });
