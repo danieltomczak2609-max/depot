@@ -154,7 +154,8 @@ body.snap .top .actions{display:none}
 .m-list{display:flex;flex-direction:column;gap:8px}
 .m-pos{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:4px 12px;align-items:center;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 13px;width:100%}
 .m-pos:active,.m-tx:active{transform:scale(.99)}
-.m-av{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:13px;letter-spacing:.02em;grid-row:span 2;align-self:start}
+.m-av{grid-row:span 2;align-self:start;display:flex;position:relative}
+.m-av::after{content:"";position:absolute;left:-3px;top:4px;bottom:4px;width:3px;border-radius:2px;background:transparent}
 .m-main{display:flex;flex-direction:column;gap:1px;min-width:0}
 .m-main .n{font-weight:650;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .m-main .t{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -188,6 +189,11 @@ body.snap .top .actions{display:none}
   .top{align-items:flex-start}
   .subline{gap:6px 10px}
 }
+.lg{width:var(--s);height:var(--s);border-radius:calc(var(--s) * .26);background:#fff;display:grid;place-items:center;overflow:hidden;flex:none;box-shadow:inset 0 0 0 1px rgba(20,34,48,.08)}
+.lg img{width:86%;height:86%;object-fit:contain;display:block}
+.lg.ini{color:#fff;font-weight:800;font-size:calc(var(--s) * .34);letter-spacing:.02em;box-shadow:none}
+.asset-row{display:flex;align-items:center;gap:9px;min-width:0}
+#pos-table .asset .n{max-width:210px}
 .pill.info{background:var(--accent-soft);color:var(--accent)}
 .srcline{font-size:12px;color:var(--muted)}
 .pill.flat{background:var(--surface-2);color:var(--muted)}
@@ -699,7 +705,7 @@ function renderPosTable(host){
   <tbody>${rows.map(p=>{
     const brokers=Object.entries(p.brokers).filter(([,q])=>q>1e-9);
     return `<tr class="click" data-sym="${esc(p.symbol)}" tabindex="0">
-    <td><div class="asset"><span class="n">${esc(p.asset.name||p.symbol)}</span><span class="t">${esc(p.asset.ticker||p.symbol)}${p.asset.exchange?" · "+esc(p.asset.exchange):""}</span></div></td>
+    <td><div class="asset-row">${logoTile(p,28)}<div class="asset"><span class="n">${esc(p.asset.name||p.symbol)}</span><span class="t">${esc(p.asset.ticker||p.symbol)}${p.asset.exchange?" · "+esc(p.asset.exchange):""}</span></div></div></td>
     <td class="hide-sm"><span class="chip"><span class="dot" style="background:${clsColor(p.asset.cls)}"></span>${esc((CLS[p.asset.cls]||CLS.other).label)}</span></td>
     <td class="r num hide-sm">${nfQ.format(p.qty)}</td>
     <td class="r num hide-sm">${p.qty>0?priceFmt(p.avg):"–"}</td>
@@ -1068,7 +1074,7 @@ async function load(){
   try{
     const j=await api("GET","/api/state");
     S.tx=(j.transactions||[]).map(t=>({...t,symbol:t.asset}));
-    S.assets=j.assets||{}; S.quotes=j.quotes||{}; S.bench=j.bench||null; S.status=j.status||{}; S.rev=j.rev; S.offline=false; S.err=null;
+    S.assets=j.assets||{}; S.quotes=j.quotes||{}; S.bench=j.bench||null; S.logos=j.logos||{}; S.status=j.status||{}; S.rev=j.rev; S.offline=false; S.err=null;
   }catch(e){ S.offline=true; S.err="App nicht erreichbar"; }
   S.loaded={tx:true,assets:true,quotes:true};
   schedule(); renderRefreshBtn(); renderFoot();
@@ -1199,7 +1205,7 @@ async function snapFetch(){
 }
 function snapApply(obj){
   S.tx=(obj.transactions||[]).map(t=>({...t,symbol:t.asset}));
-  S.assets=obj.assets||{}; S.quotes=obj.quotes||{}; S.bench=obj.bench||null; S.status=obj.status||{};
+  S.assets=obj.assets||{}; S.quotes=obj.quotes||{}; S.bench=obj.bench||null; S.logos=obj.logos||{}; S.status=obj.status||{};
   S.snapAt=obj.snapshotAt; S.offline=false; S.err=null; S.loaded={tx:true,assets:true,quotes:true};
   S.snapLoadedAt=Date.now();
   schedule(); renderFoot();
@@ -1317,6 +1323,11 @@ if(MQ&&MQ.addEventListener) MQ.addEventListener("change",()=>schedule());
 function posColor(i){ const hues=[228,170,35,280,350,200,95,20,310,130,255,55]; return `hsl(${hues[i%hues.length]} 62% 58%)`; }
 function initials(p){ const t=(p.asset.ticker||p.asset.name||p.symbol||"?").replace(/[^A-Za-z0-9]/g,""); return (t.slice(0,2)||"?").toUpperCase(); }
 function shortNm(p){ return (p.asset.name||p.symbol).replace(/ \(ADR\)| Kurs in Euro.*$/g,""); }
+function logoTile(p,size,col){
+  const src=S.logos&&S.logos[p.symbol];
+  if(src) return `<span class="lg" style="--s:${size}px"><img src="${src}" alt="" loading="lazy"></span>`;
+  return `<span class="lg ini" style="--s:${size}px;background:${col||p._col||clsColor(p.asset.cls)}">${esc(initials(p))}</span>`;
+}
 const MSORT=[["value","Wert"],["pl","G/V %"],["day","Heute"],["name","Name"]];
 
 function renderOverviewMobile(v){
@@ -1360,7 +1371,7 @@ function renderOverviewMobile(v){
     <div class="m-list">${list.map(p=>{
       const cs=p.cost/costTot, isOpen=p.qty>1e-9;
       return `<button type="button" class="m-pos" data-sym="${esc(p.symbol)}">
-        <span class="m-av" style="background:${p._col||"var(--line)"}">${esc(initials(p))}</span>
+        <span class="m-av">${logoTile(p,40,p._col||"var(--muted)")}</span>
         <span class="m-main"><span class="n">${esc(shortNm(p))}</span><span class="t">${esc(p.asset.ticker||p.symbol)}${isOpen?" · "+nfQ.format(+p.qty.toFixed(4))+" Stk.":" · verkauft"}</span></span>
         <span class="m-right"><b>${isOpen?eur(p.value):eur(p.realized,true)}</b>
           ${isOpen?`<span class="m-pl ${cls(p.unreal)}">${eur(p.unreal,true)} · ${pct(p.unrealPct)}</span>${p.chg!=null?`<span class="m-day ${cls(p.chg)}">Heute ${pct(p.chg)}</span>`:""}`:`<span class="m-pl muted">realisiert</span>`}</span>
@@ -1556,7 +1567,7 @@ function openAsset(sym){
   const p=M.pos[sym]; if(!p)return;
   const a=p.asset, txs=M.txs.filter(t=>t.symbol===sym).slice().reverse(), q=S.quotes[sym]||{};
   let newSrc=null;
-  const d=showModal(`<header><div class="asset"><h3>${esc(a.name||sym)}</h3><span class="t">${esc(a.ticker||sym)} · ${esc((CLS[a.cls]||CLS.other).label)}${a.isin?" · "+esc(a.isin):""}</span></div><button class="btn ghost small" data-close type="button" aria-label="Schließen">✕</button></header>
+  const d=showModal(`<header><div class="asset-row">${logoTile(p,40)}<div class="asset"><h3>${esc(a.name||sym)}</h3><span class="t">${esc(a.ticker||sym)} · ${esc((CLS[a.cls]||CLS.other).label)}${a.isin?" · "+esc(a.isin):""}</span></div></div><button class="btn ghost small" data-close type="button" aria-label="Schließen">✕</button></header>
   <div class="body">
     <div class="statgrid">
       ${metric("Bestand",nfQ.format(p.qty)+" Stück",p.qty>0?"Wert "+eur(p.value):"Position geschlossen")}
