@@ -154,8 +154,7 @@ body.snap .top .actions{display:none}
 .m-list{display:flex;flex-direction:column;gap:8px}
 .m-pos{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:4px 12px;align-items:center;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 13px;width:100%}
 .m-pos:active,.m-tx:active{transform:scale(.99)}
-.m-av{grid-row:span 2;align-self:start;display:flex;position:relative}
-.m-av::after{content:"";position:absolute;left:-3px;top:4px;bottom:4px;width:3px;border-radius:2px;background:transparent}
+.m-av{grid-row:1 / span 2;align-self:center;display:flex;position:relative}
 .m-main{display:flex;flex-direction:column;gap:1px;min-width:0}
 .m-main .n{font-weight:650;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .m-main .t{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1737,6 +1736,7 @@ function openAsset(sym){
         <div class="field"><label for="as-tick">Ticker</label><input id="as-tick" value="${esc(a.ticker||"")}"></div>
         <div class="field"><label for="as-name">Name</label><input id="as-name" value="${esc(a.name||"")}"></div>
         <div class="field"><label for="as-cls">Anlageklasse</label><select id="as-cls">${Object.entries(CLS).map(([k,c])=>`<option value="${k}" ${a.cls===k?"selected":""}>${c.label}</option>`).join("")}</select></div>
+        <div class="field edit-only"><label>Logo</label><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${logoTile(p,36)}<label class="btn small" for="as-logo" style="cursor:pointer">Eigenes Bild wählen</label><input type="file" id="as-logo" accept="image/png,image/jpeg,image/webp" hidden>${S.logos&&S.logos[sym]?'<button type="button" class="btn ghost small" id="as-logo-rm">Entfernen</button>':""}</div></div>
         <div class="field"><label for="as-isin">ISIN</label><input id="as-isin" value="${esc(a.isin||"")}" placeholder="optional"></div>
         <div class="field"><label for="as-price">Kurs von Hand (€)</label><input id="as-price" inputmode="decimal" placeholder="${p.price?String(+p.price.toFixed(4)).replace(".",","):"0,00"}"><span class="hint">${a.ovId?"Wird beim nächsten Abruf überschrieben.":"Bleibt, bis du ihn änderst."}</span></div>
       </div>
@@ -1765,6 +1765,19 @@ function openAsset(sym){
     }catch(e){ host.innerHTML=`<div class="results"><div class="msg">${esc(apiMsg(e))}</div></div>`; }
   };
   d.querySelector("#as-buy").onclick=()=>{ closeModal(); openTx(null,sym); };
+  const lf=d.querySelector("#as-logo");
+  if(lf) lf.onchange=async()=>{
+    const f=lf.files[0]; if(!f)return;
+    try{
+      const img=await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=()=>rej(new Error("Bild nicht lesbar")); i.src=URL.createObjectURL(f); });
+      const c=document.createElement("canvas"); c.width=c.height=128; const x=c.getContext("2d");
+      const sc=Math.min(128/img.width,128/img.height), w=img.width*sc, hh=img.height*sc; x.drawImage(img,(128-w)/2,(128-hh)/2,w,hh);
+      await api("POST","/api/logo/"+encodeURIComponent(sym),{dataUrl:c.toDataURL("image/png")});
+      toast("Logo gespeichert"); closeModal(); await load();
+    }catch(e){ toast(apiMsg(e)); }
+  };
+  const lr=d.querySelector("#as-logo-rm");
+  if(lr) lr.onclick=async()=>{ try{ await api("POST","/api/logo/"+encodeURIComponent(sym),{remove:true}); toast("Logo entfernt"); closeModal(); await load(); }catch(e){ toast(apiMsg(e)); } };
   d.querySelector("#as-save").onclick=async()=>{
     const err=d.querySelector("#as-err"); err.textContent="";
     const isin=d.querySelector("#as-isin").value.trim().toUpperCase(), priceIn=d.querySelector("#as-price").value.trim();
