@@ -113,6 +113,81 @@ body:not(.snap) .snap-only{display:none!important}
 .steps a,.body a:not(.btn){color:var(--accent)}
 details summary{font-size:14px}
 @media (max-width:640px){.wrap{padding:calc(14px + env(safe-area-inset-top,0px)) max(14px,env(safe-area-inset-right,0px)) 48px max(14px,env(safe-area-inset-left,0px))}.total{font-size:34px}.kpis{grid-template-columns:repeat(2,1fr)}}
+
+/* ---------- Handy ---------- */
+.m-stack{display:flex;flex-direction:column;gap:14px}
+#banner:empty{display:none}
+body.snap .top .actions{display:none}
+.m-chart{padding:12px 0 12px}
+.m-chart .chart-head{padding:4px 14px 0}
+.m-chart .chart-head .muted{display:none}
+.m-chart .chart-head .big{font-size:26px}
+.m-chart .chart{padding:0 4px}
+.m-modes{display:flex;gap:18px;padding:0 14px;border-bottom:1px solid var(--line)}
+.m-modes button{background:none;border:0;padding:6px 0 9px;font-weight:600;font-size:14px;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
+.m-modes button[aria-pressed="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.m-ranges{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;padding:4px 10px 0}
+.m-ranges button{background:none;border:0;border-radius:999px;padding:8px 0;font-weight:700;font-size:13px;color:var(--muted)}
+.m-ranges button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
+.m-tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.m-tiles.three{grid-template-columns:repeat(3,1fr)}
+.m-tile{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 13px;display:flex;flex-direction:column;gap:3px;min-width:0}
+.m-tile .k{font-size:12px;color:var(--muted);font-weight:600}
+.m-tile b{font-family:var(--f-num);font-weight:500;font-size:17px;letter-spacing:-.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m-tile .s{font-size:11px;color:var(--muted);line-height:1.3}
+.m-fine{margin:0 2px;font-size:12px;color:var(--muted)}
+.m-sec-h{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
+.m-sec-h h2{margin:0;font-size:17px}
+.m-alloc{padding:14px}
+.m-stackbar{display:flex;height:14px;border-radius:7px;overflow:hidden;gap:2px;background:var(--surface-2)}
+.m-stackbar i{display:block;height:100%;min-width:2px}
+.m-legend{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;margin-top:12px;font-size:13px}
+.m-legend span{display:flex;align-items:center;gap:7px;min-width:0}
+.m-legend span i{width:9px;height:9px;border-radius:3px;flex:none}
+.m-legend b{margin-left:auto;font-family:var(--f-num);font-weight:500;font-size:12px}
+.m-chips{display:flex;gap:6px;flex-wrap:wrap}
+.m-chips.scroll{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -14px;padding:0 14px}
+.m-chips.scroll::-webkit-scrollbar{display:none}
+.m-chips button{flex:none;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600}
+.m-chips.small button{padding:4px 10px;font-size:12px}
+.m-chips button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.m-list{display:flex;flex-direction:column;gap:8px}
+.m-pos{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:4px 12px;align-items:center;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 13px;width:100%}
+.m-pos:active,.m-tx:active{transform:scale(.99)}
+.m-av{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:13px;letter-spacing:.02em;grid-row:span 2;align-self:start}
+.m-main{display:flex;flex-direction:column;gap:1px;min-width:0}
+.m-main .n{font-weight:650;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.m-main .t{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.m-main .t.note{font-style:italic}
+.m-right{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.m-right b{font-family:var(--f-num);font-weight:500;font-size:15px;letter-spacing:-.03em;white-space:nowrap}
+.m-right .t{font-size:12px;color:var(--muted)}
+.m-pl{font-family:var(--f-num);font-size:12px;white-space:nowrap}
+.m-bars{grid-column:2/4;display:grid;grid-template-columns:1fr 74px;gap:4px 10px;align-items:center;margin-top:6px}
+.m-bars .bt{height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden}
+.m-bars .bt i{display:block;height:100%;border-radius:3px}
+.m-bars .bt.inv i{background:var(--muted);opacity:.5}
+.m-bars .lbl{font-family:var(--f-num);font-size:11px;text-align:right;min-width:62px}
+.m-day{font-family:var(--f-num);font-size:11px;text-align:right;white-space:nowrap}
+.m-link{background:none;border:0;color:var(--accent);font-weight:600;font-size:14px;padding:12px;align-self:center}
+.m-search input{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 13px;font-size:16px}
+.m-month{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.m-month-h{display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:var(--muted);padding:0 4px;text-transform:uppercase;letter-spacing:.05em}
+.m-month-h span:last-child{font-family:var(--f-num);font-weight:500;text-transform:none;letter-spacing:-.02em}
+.m-txs{padding:2px 0;border-radius:16px;overflow:hidden}
+.m-tx{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:12px;align-items:center;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:11px 13px}
+.m-tx:first-child{border-top:0}
+.m-ic{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:16px}
+.m-ic.buy{background:var(--accent-soft);color:var(--accent)}
+.m-ic.sell{background:var(--warn-soft);color:var(--warn)}
+.m-ic.dividend{background:var(--gain-soft);color:var(--gain)}
+.m-ic.interest{background:color-mix(in srgb,var(--c-etf) 18%,var(--surface));color:var(--c-etf)}
+@media (max-width:640px){
+  .tabs{position:sticky;top:0;z-index:15;background:var(--bg);margin:0 calc(-1 * max(14px,env(safe-area-inset-left,0px)));padding:env(safe-area-inset-top,0px) max(14px,env(safe-area-inset-left,0px)) 0}
+  .tab{flex:1;text-align:center;padding:12px 6px}
+  .top{align-items:flex-start}
+  .subline{gap:6px 10px}
+}
 .pill.info{background:var(--accent-soft);color:var(--accent)}
 .srcline{font-size:12px;color:var(--muted)}
 .pill.flat{background:var(--surface-2);color:var(--muted)}
@@ -459,7 +534,7 @@ function niceTicks(min,max,count){
 }
 function lineChart(host,{dates,lines,fmt,height,zero,tipRows}){
   host.innerHTML="";
-  const W=Math.max(300,host.clientWidth-16), H=height||280, padL=8, padR=64, padT=12, padB=26;
+  const W=Math.max(280,host.clientWidth-16), H=height||(isMobile()?230:280), padL=8, padR=isMobile()?48:64, padT=12, padB=26;
   const n=dates.length;
   if(n<2){ host.innerHTML='<div class="empty-chart">Noch zu wenige Daten für einen Verlauf.</div>'; return; }
   let mn=Infinity,mx=-Infinity; for(const l of lines) for(const v of l.values){ if(v<mn)mn=v; if(v>mx)mx=v; }
@@ -546,6 +621,7 @@ function renderOverview(v){
       <button class="btn primary" type="button" data-act="add">+ Erste Transaktion</button></div></div>`;
     v.querySelector('[data-act="add"]').onclick=()=>openTx(); return;
   }
+  if(isMobile())return renderOverviewMobile(v);
   const {k}=M;
   v.innerHTML=`<div style="display:flex;flex-direction:column;gap:20px">
   <section class="card" aria-label="Gesamtchart">
@@ -641,6 +717,7 @@ function renderPosTable(host){
 /* ---------- Journal ---------- */
 function renderJournal(v){
   if(!allLoaded()&&!S.err){ v.innerHTML='<div class="card"><div class="empty">Transaktionen werden geladen …</div></div>'; return; }
+  if(isMobile())return renderJournalMobile(v);
   const brokers=[...new Set(S.tx.map(t=>t.broker).filter(Boolean))].sort();
   v.innerHTML=`<section class="card">
     <div class="card-h"><h2>Transaktionen</h2><div class="actions"><label class="btn small edit-only" for="imp-file" style="cursor:pointer">CSV importieren</label><input type="file" id="imp-file" accept=".csv,text/csv" hidden><button class="btn small" id="btn-export" type="button">Als CSV speichern</button></div></div>
@@ -1233,6 +1310,125 @@ function syncFormFields(st,editing){
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn small" type="button" id="sy-gen">Sicheres Passwort vorschlagen</button><span class="hint" id="sy-pwnote" hidden>Schreib es dir auf oder speichere es im Passwort-Manager. Ohne Passwort kommt niemand an die Daten, auch du nicht. Vergessen? Einfach hier ein neues setzen.</span></div>`;
 }
 
+/* ---------- Handy-Ansichten (schmale Bildschirme) ---------- */
+const MQ=window.matchMedia?window.matchMedia("(max-width:640px)"):null;
+function isMobile(){ return !!(MQ&&MQ.matches); }
+if(MQ&&MQ.addEventListener) MQ.addEventListener("change",()=>schedule());
+function posColor(i){ const hues=[228,170,35,280,350,200,95,20,310,130,255,55]; return `hsl(${hues[i%hues.length]} 62% 58%)`; }
+function initials(p){ const t=(p.asset.ticker||p.asset.name||p.symbol||"?").replace(/[^A-Za-z0-9]/g,""); return (t.slice(0,2)||"?").toUpperCase(); }
+function shortNm(p){ return (p.asset.name||p.symbol).replace(/ \(ADR\)| Kurs in Euro.*$/g,""); }
+const MSORT=[["value","Wert"],["pl","G/V %"],["day","Heute"],["name","Name"]];
+
+function renderOverviewMobile(v){
+  const {k}=M;
+  const open=Object.values(M.pos).filter(p=>p.qty>1e-9).sort((a,b)=>b.value-a.value);
+  const closed=Object.values(M.pos).filter(p=>p.qty<=1e-9);
+  open.forEach((p,i)=>p._col=posColor(i));
+  const sortKey=S.msort||"value";
+  const list=(S.showClosed?open.concat(closed):open).slice().sort((a,b)=>{
+    if(sortKey==="pl")return (b.qty>0?b.unrealPct:-9)-(a.qty>0?a.unrealPct:-9);
+    if(sortKey==="day")return (b.chg??-9)-(a.chg??-9);
+    if(sortKey==="name")return shortNm(a).localeCompare(shortNm(b),"de");
+    return b.value-a.value; });
+  const costTot=k.cost||1, shareMax=Math.max(0.0001,...open.map(p=>Math.max(p.share,p.cost/costTot)));
+  const income=(k.divs||0)+(k.interest||0);
+  const top=open.slice(0,7), rest=open.slice(7), restShare=rest.reduce((s,p)=>s+p.share,0);
+  v.innerHTML=`<div class="m-stack">
+  <section class="card m-chart" aria-label="Gesamtentwicklung">
+    <div class="m-modes" id="seg-mode">${[["pct","Rendite"],["eur","Gewinn"],["value","Depotwert"]].map(([m,l])=>`<button type="button" data-m="${m}" aria-pressed="${S.mode===m}">${l}</button>`).join("")}</div>
+    <div class="chart-head" id="chart-head"></div>
+    <div class="chart" id="chart"></div>
+    <div class="m-ranges" id="seg-range">${["1M","3M","YTD","1J","3J","MAX"].map(r=>`<button type="button" data-r="${r}" aria-pressed="${S.range===r}">${r==="MAX"?"Max":r}</button>`).join("")}</div>
+  </section>
+
+  <div class="m-tiles">
+    <div class="m-tile"><span class="k">Unrealisiert</span><b class="${cls(k.unreal)}">${eur(k.unreal,true)}</b><span class="s">${k.cost>0?pct(k.unreal/k.cost):""} auf Einstand</span></div>
+    <div class="m-tile"><span class="k">Realisiert</span><b class="${cls(k.realized)}">${eur(k.realized,true)}</b><span class="s">aus Verkäufen</span></div>
+    <div class="m-tile"><span class="k">Erträge</span><b class="${cls(income)}">${eur(income,true)}</b><span class="s">Dividenden ${eur0(k.divs)} · Zinsen ${eur0(k.interest)}</span></div>
+    <div class="m-tile"><span class="k">Investiert</span><b>${eur0(k.invested)}</b><span class="s">netto eingezahlt</span></div>
+  </div>
+  <p class="m-fine">Gebühren ${eur(k.fees)} · Steuern ${eur(k.taxes)}</p>
+
+  ${open.length?`<section class="card m-alloc"><div class="m-sec-h"><h2>Woraus dein Depot besteht</h2><span class="muted">${open.length} Positionen</span></div>
+    <div class="m-stackbar">${top.map(p=>`<i style="width:${(p.share*100).toFixed(2)}%;background:${p._col}" title="${esc(shortNm(p))}"></i>`).join("")}${rest.length?`<i style="width:${(restShare*100).toFixed(2)}%;background:var(--line)"></i>`:""}</div>
+    <div class="m-legend">${top.map(p=>`<span><i style="background:${p._col}"></i>${esc(shortNm(p))}<b>${nfP1.format(p.share)}</b></span>`).join("")}${rest.length?`<span><i style="background:var(--line)"></i>Übrige (${rest.length})<b>${nfP1.format(restShare)}</b></span>`:""}</div>
+  </section>`:""}
+
+  <section class="m-positions" aria-label="Positionen">
+    <div class="m-sec-h"><h2>Positionen</h2>
+      <div class="m-chips" id="m-sort">${MSORT.map(([key,l])=>`<button type="button" data-s="${key}" aria-pressed="${sortKey===key}">${l}</button>`).join("")}</div></div>
+    <div class="m-list">${list.map(p=>{
+      const cs=p.cost/costTot, isOpen=p.qty>1e-9;
+      return `<button type="button" class="m-pos" data-sym="${esc(p.symbol)}">
+        <span class="m-av" style="background:${p._col||"var(--line)"}">${esc(initials(p))}</span>
+        <span class="m-main"><span class="n">${esc(shortNm(p))}</span><span class="t">${esc(p.asset.ticker||p.symbol)}${isOpen?" · "+nfQ.format(+p.qty.toFixed(4))+" Stk.":" · verkauft"}</span></span>
+        <span class="m-right"><b>${isOpen?eur(p.value):eur(p.realized,true)}</b>
+          ${isOpen?`<span class="m-pl ${cls(p.unreal)}">${eur(p.unreal,true)} · ${pct(p.unrealPct)}</span>${p.chg!=null?`<span class="m-day ${cls(p.chg)}">Heute ${pct(p.chg)}</span>`:""}`:`<span class="m-pl muted">realisiert</span>`}</span>
+        ${isOpen?`<span class="m-bars"><span class="bt"><i style="width:${(p.share/shareMax*100).toFixed(1)}%;background:${p._col}"></i></span><span class="lbl">${nfP1.format(p.share)}</span>
+          <span class="bt inv"><i style="width:${(cs/shareMax*100).toFixed(1)}%"></i></span><span class="lbl muted">inv. ${nfP1.format(cs)}</span></span>`:""}
+      </button>`; }).join("")}</div>
+    ${closed.length?`<button type="button" class="m-link" id="m-closed">${S.showClosed?"Verkaufte Positionen ausblenden":`Verkaufte Positionen anzeigen (${closed.length})`}</button>`:""}
+  </section></div>`;
+  v.querySelectorAll("#seg-mode button").forEach(b=>b.onclick=()=>{S.mode=b.dataset.m;saveUi();render();});
+  v.querySelectorAll("#seg-range button").forEach(b=>b.onclick=()=>{S.range=b.dataset.r;saveUi();render();});
+  v.querySelectorAll("#m-sort button").forEach(b=>b.onclick=()=>{S.msort=b.dataset.s;render();});
+  v.querySelectorAll(".m-pos").forEach(b=>b.onclick=()=>openAsset(b.dataset.sym));
+  if(v.querySelector("#m-closed")) v.querySelector("#m-closed").onclick=()=>{S.showClosed=!S.showClosed;render();};
+  drawMainChart();
+}
+
+const TX_ICON={buy:"＋",sell:"−",dividend:"%",interest:"€"};
+function txSigned(t){
+  const fee=(+t.fee||0)+(+t.tax||0), a=txAmount(t);
+  if(t.type==="buy")return -(a+fee);
+  if(t.type==="sell")return a-fee;
+  return a-fee;
+}
+function renderJournalMobile(v){
+  const brokers=[...new Set(S.tx.map(t=>t.broker).filter(Boolean))].sort();
+  v.innerHTML=`<div class="m-stack">
+    <div class="m-search"><input id="f-q" type="search" placeholder="Suchen: Asset, Ticker, Notiz" value="${esc(S.f.q)}" aria-label="Suchen"></div>
+    <div class="m-chips scroll" id="m-type"><button type="button" data-t="" aria-pressed="${!S.f.type}">Alle</button>${Object.entries(TYPE).map(([k2,l])=>`<button type="button" data-t="${k2}" aria-pressed="${S.f.type===k2}">${l}</button>`).join("")}</div>
+    ${brokers.length>1?`<div class="m-chips scroll small" id="m-broker"><button type="button" data-b="" aria-pressed="${!S.f.broker}">Alle Broker</button>${brokers.map(b=>`<button type="button" data-b="${esc(b)}" aria-pressed="${S.f.broker===b}">${esc(b)}</button>`).join("")}</div>`:""}
+    <div id="m-jlist"></div>
+    <button class="btn small" id="btn-export" type="button" style="align-self:center">Als CSV speichern</button>
+  </div>`;
+  const draw=()=>renderJListMobile(v.querySelector("#m-jlist"));
+  v.querySelector("#f-q").oninput=e=>{ S.f.q=e.target.value; draw(); };
+  v.querySelectorAll("#m-type button").forEach(b=>b.onclick=()=>{ S.f.type=b.dataset.t; v.querySelectorAll("#m-type button").forEach(x=>x.setAttribute("aria-pressed",String(x===b))); draw(); });
+  v.querySelectorAll("#m-broker button").forEach(b=>b.onclick=()=>{ S.f.broker=b.dataset.b; v.querySelectorAll("#m-broker button").forEach(x=>x.setAttribute("aria-pressed",String(x===b))); draw(); });
+  v.querySelector("#btn-export").onclick=exportCsv;
+  draw();
+}
+function renderJListMobile(host){
+  const q=S.f.q.trim().toLowerCase();
+  const rows=S.tx.filter(t=>{
+    const a=S.assets[t.symbol]||{};
+    if(S.f.type&&t.type!==S.f.type)return false;
+    if(S.f.broker&&t.broker!==S.f.broker)return false;
+    if(q&&!((t.type==="interest"?"zinsen ":"")+(a.ticker||"")+" "+(a.isin||"")+" "+(a.name||"")+" "+(t.note||"")+" "+(t.broker||"")).toLowerCase().includes(q))return false;
+    return true;
+  }).sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:(b.createdAt||0)-(a.createdAt||0));
+  if(!rows.length){ host.innerHTML=`<div class="card"><div class="empty">${S.tx.length?"Keine Buchung passt zu Suche oder Filter.":"Noch keine Transaktionen."}</div></div>`; return; }
+  let buy=0,sell=0,inc=0; rows.forEach(t=>{ const s=txSigned(t); if(t.type==="buy")buy+=-s; else if(t.type==="sell")sell+=s; else inc+=s; });
+  const groups={}; rows.forEach(t=>{ (groups[t.date.slice(0,7)]=groups[t.date.slice(0,7)]||[]).push(t); });
+  const monthName=k2=>{ const [y,m]=k2.split("-"); return ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"][+m-1]+" "+y; };
+  host.innerHTML=`<div class="m-tiles three">
+      <div class="m-tile"><span class="k">Gekauft</span><b>${eur0(buy)}</b></div>
+      <div class="m-tile"><span class="k">Verkauft</span><b>${eur0(sell)}</b></div>
+      <div class="m-tile"><span class="k">Erträge</span><b class="${cls(inc)}">${eur0(inc)}</b></div></div>
+    <p class="m-fine">${rows.length} ${rows.length===1?"Buchung":"Buchungen"}${S.f.type||S.f.broker||q?" (gefiltert)":""}</p>
+    ${Object.entries(groups).map(([mk,ts])=>{ const net=ts.reduce((s,t)=>s+txSigned(t),0);
+      return `<section class="m-month"><div class="m-month-h"><span>${monthName(mk)}</span><span class="${cls(net)}">${eur(net,true)}</span></div>
+      <div class="card m-txs">${ts.map(t=>{ const a=S.assets[t.symbol]||{}, s=txSigned(t), inc2=IS_INCOME(t.type);
+        const name=t.type==="interest"?"Zinsen":(a.name||t.symbol||"?").replace(/ \(ADR\)| Kurs in Euro.*$/g,"");
+        const detail=inc2?[TYPE[t.type],(+t.tax?"Steuer "+eur(+t.tax):""),t.broker].filter(Boolean).join(" · "):[TYPE[t.type],nfQ.format(+(+t.qty).toFixed(4))+" × "+priceFmt(+t.price),t.broker].filter(Boolean).join(" · ");
+        return `<button type="button" class="m-tx" data-id="${esc(t.id)}"><span class="m-ic ${t.type}">${TX_ICON[t.type]}</span>
+          <span class="m-main"><span class="n">${esc(name)}</span><span class="t">${esc(detail)}</span>${t.note?`<span class="t note">${esc(t.note)}</span>`:""}</span>
+          <span class="m-right"><b class="${s>0?"pos":""}">${eur(s,true)}</b><span class="t">${fmtDate(t.date).slice(0,6)}</span></span></button>`; }).join("")}</div></section>`; }).join("")}`;
+  host.querySelectorAll(".m-tx").forEach(b=>b.onclick=()=>{ if(SNAP)return; openTx(S.tx.find(x=>x.id===b.dataset.id)); });
+}
+
 /* ---------- Dialoge ---------- */
 function closeModal(){ document.getElementById("modal").innerHTML=""; document.removeEventListener("keydown",escClose); }
 function escClose(e){ if(e.key==="Escape")closeModal(); }
@@ -1481,7 +1677,7 @@ document.addEventListener("keydown",e=>{
   if(/INPUT|SELECT|TEXTAREA/.test((e.target&&e.target.tagName)||""))return;
   if((e.key==="n"||e.key==="N")&&!e.metaKey&&!e.ctrlKey&&!e.altKey){ e.preventDefault(); openTx(); }
 });
-let rz=0; window.addEventListener("resize",()=>{ clearTimeout(rz); rz=setTimeout(()=>{ if(S.view==="overview")drawMainChart(); else if(S.view==="analysis")render(); },120); });
+let rz=0; window.addEventListener("resize",()=>{ clearTimeout(rz); rz=setTimeout(()=>{ if(S.view==="overview"&&!isMobile())drawMainChart(); else render(); },120); });
 if(window.matchMedia) window.matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",schedule);
 if(SNAP){
   document.body.classList.add("snap");
