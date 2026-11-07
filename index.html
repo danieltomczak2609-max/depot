@@ -1252,7 +1252,7 @@ async function snapDecrypt(f,key){
 
 /* ---------- Handy-Ansicht (nur lesen) ---------- */
 const SNAP=!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const BUILD="11aeef39d03d";
+const BUILD="d23bb31b2685";
 // Ist die Seite älter als der Depotstand, einmal mit neuer Adresse laden (umgeht den Zwischenspeicher)
 function snapCheckBuild(obj){
   if(!obj||!obj.build||BUILD===obj.build||BUILD.indexOf("DEPOT_")>=0)return false;
@@ -1493,8 +1493,9 @@ function renderOverviewMobile(v){
     <div class="m-tile"><span class="k">Realisiert</span><b class="${cls(k.realized)}">${eur(k.realized,true)}</b><span class="s">aus Verkäufen</span></div>
     <div class="m-tile"><span class="k">Erträge</span><b class="${cls(income)}">${eur(income,true)}</b><span class="s">Dividenden ${eur0(k.divs)} · Zinsen ${eur0(k.interest)}</span></div>
     <div class="m-tile"><span class="k">Investiert</span><b>${eur0(k.invested)}</b><span class="s">netto eingezahlt</span></div>
+    <div class="m-tile"><span class="k">Gebühren</span><b>${eur(k.fees)}</b><span class="s">alle Transaktionen</span></div>
+    <div class="m-tile"><span class="k">Steuern</span><b>${eur(k.taxes)}</b><span class="s">alle Transaktionen</span></div>
   </div>
-  <p class="m-fine">Gebühren ${eur(k.fees)} · Steuern ${eur(k.taxes)}</p>
 
   ${open.length?`<button type="button" class="card m-alloc2" id="m-alloc" aria-label="Aufteilung anzeigen">
     <span class="m-ring">${ringSvg(open.map((p,i)=>({share:p.share,col:p._col})),116,16,null)}<span class="c"><b>${open.length}</b><small>Positionen</small></span></span>
