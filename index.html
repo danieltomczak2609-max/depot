@@ -255,6 +255,44 @@ body.snap .top .actions{display:none}
 .mk-legend{display:flex;gap:16px;font-size:12px;color:var(--muted);margin-top:-6px}
 .mk-legend span{display:flex;align-items:center;gap:6px}
 .mk-legend i{width:9px;height:9px;border-radius:50%;display:block}
+.st .card-h{flex-wrap:wrap;gap:10px}
+.st-say{background:var(--accent-soft);border-radius:12px;padding:14px 16px;font-size:14.5px;line-height:1.5}
+.st-say b{color:var(--ink);font-family:var(--f-num);font-weight:600;letter-spacing:-.02em}
+.st-tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.st-worst{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.st-tile{background:var(--surface-2);border-radius:12px;padding:13px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.st-tile .k{font-size:12.5px;color:var(--muted);font-weight:600}
+.st-tile b{font-family:var(--f-num);font-weight:500;font-size:23px;letter-spacing:-.03em;white-space:nowrap}
+.st-tile .s{font-size:12px;color:var(--muted);line-height:1.35}
+.st-hist{display:flex;align-items:flex-end;gap:6px;height:130px}
+.st-hist div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;height:100%;min-width:0}
+.st-hist i{display:block;width:100%;border-radius:5px 5px 2px 2px;background:var(--loss)}
+.st-hist em{font-style:normal;font-size:11px;font-family:var(--f-num)}
+.st-hist span{font-size:10.5px;color:var(--muted);font-family:var(--f-num);white-space:nowrap}
+.st-ctl{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;font-size:14px}
+.st-ctl label{color:var(--muted);font-weight:600;font-size:13px}
+.st-ctl select{background:var(--surface-2);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:7px 10px;font-size:14px;max-width:100%}
+.st-ctl input[type=range]{flex:1;min-width:140px;accent-color:var(--accent)}
+.st-tbl{width:100%;border-collapse:collapse;font-size:14px}
+.st-tbl th{font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);text-align:left;font-weight:700;padding:8px 10px;border-bottom:1px solid var(--line)}
+.st-tbl th.r,.st-tbl td.r{text-align:right}
+.st-tbl td{padding:10px;border-bottom:1px solid var(--line)}
+.st-tbl tr.me td{font-weight:600}
+.st-tbl tr.better td{background:color-mix(in srgb,var(--gain) 9%,transparent)}
+.st-limits{border:1px dashed var(--line);border-radius:12px;padding:12px 14px;margin:0}
+@media (max-width:640px){
+  .st-tiles{gap:8px}.st-worst{gap:8px}.st-tile{padding:11px}.st-tile b{font-size:18px}.st-worst .st-tile b{font-size:16px}
+  .st-hist{gap:3px}.st-hist span{font-size:9px}
+  .st-tbl thead{display:none}
+  .st-tbl tr{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 8px;padding:11px 10px;border-bottom:1px solid var(--line)}
+  .st-tbl td{border:0;padding:0}
+  .st-tbl td:first-child{grid-column:1/-1;font-size:14px}
+  .st-tbl td.r{text-align:left;display:flex;flex-direction:column;font-size:15px}
+  .st-tbl td.r::before{content:attr(data-k);font-size:11px;color:var(--muted);font-family:var(--f-body);font-weight:600}
+  .st-tbl td.hide-sm{display:none}
+  .st-tbl tr.better{background:color-mix(in srgb,var(--gain) 9%,transparent);border-radius:10px}.st-tbl tr.better td{background:none}
+  .st-ctl select{width:100%}
+}
 .pill.info{background:var(--accent-soft);color:var(--accent)}
 .srcline{font-size:12px;color:var(--muted)}
 .pill.flat{background:var(--surface-2);color:var(--muted)}
@@ -461,8 +499,8 @@ const S={tx:[],assets:{},quotes:{},loaded:{tx:false,assets:false,quotes:false},e
   f:{q:"",type:"",broker:"",cls:""}};
 let M=null;
 S.status={}; S.rev=0;
-try{ const v=localStorage.getItem("depot.ui"); if(v){ const o=JSON.parse(v); ["view","range","mode","aRange"].forEach(k=>{ if(o[k])S[k]=o[k]; }); } }catch(e){}
-function saveUi(){ try{ localStorage.setItem("depot.ui",JSON.stringify({view:S.view,range:S.range,mode:S.mode,aRange:S.aRange})); }catch(e){} }
+try{ const v=localStorage.getItem("depot.ui"); if(v){ const o=JSON.parse(v); ["view","range","mode","aRange","stH"].forEach(k=>{ if(o[k])S[k]=o[k]; }); } }catch(e){}
+function saveUi(){ try{ localStorage.setItem("depot.ui",JSON.stringify({view:S.view,range:S.range,mode:S.mode,aRange:S.aRange,stH:S.stH})); }catch(e){} }
 
 /* ---------- Berechnung ---------- */
 function compute(){
@@ -949,6 +987,164 @@ function quant(){
   Q.ok=true; return Q;
 }
 
+/* ---------- Stresstest (Monte Carlo, Block-Bootstrap) ---------- */
+const ST_H=[["3M",13,"3 Monaten"],["6M",26,"6 Monaten"],["12M",52,"12 Monaten"],["3J",156,"3 Jahren"]];
+const ST_N=5000, ST_BLOCK=4, ST_WEEKS=156;
+function stRng(seed){ let a=seed>>>0; return ()=>{ a=(a+0x6D2B79F5)>>>0; let t=a; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
+function stMedian(a){ if(!a.length)return 0; const s=a.slice().sort((x,y)=>x-y), m=s.length>>1; return s.length%2?s[m]:(s[m-1]+s[m])/2; }
+// Wochenrenditen je Position und gemeinsame Wochenliste
+function stInputs(){
+  const open=Object.values(M.pos).filter(p=>p.qty>1e-9&&p.value>0);
+  const V=open.reduce((s,p)=>s+p.value,0); if(!V)return null;
+  const from=dstr(dnum(localToday())-ST_WEEKS*7-7);
+  const W={}, cls={};
+  open.forEach(p=>{ const q=S.quotes[p.symbol]; W[p.symbol]=weeklyFromHist(q&&q.hist||{},from); cls[p.symbol]=p.asset.cls||"other"; });
+  if(S.bench&&S.bench.hist){ W.__ETF=weeklyFromHist(S.bench.hist,from); cls.__ETF="etf"; }
+  const weeks=[...new Set(open.flatMap(p=>Object.keys(W[p.symbol])))].sort().filter(k=>k<=weekKey(localToday()));
+  const w={}; open.forEach(p=>w[p.symbol]=p.value/V);
+  return {open,V,W,cls,weeks,w};
+}
+// Wochenrenditen des Depots mit festen Gewichten; Lücken = Median gleicher Klasse in derselben Woche
+function stSeries(inp,w){
+  const out=[], wk=[], ids=Object.keys(w).filter(a=>w[a]>0);
+  for(const k of inp.weeks){
+    const have={}; let cov=0;
+    for(const a of Object.keys(inp.W)){ const r=inp.W[a][k]; if(r!=null&&isFinite(r)&&Math.abs(r)<3) have[a]=r; }
+    for(const a of ids) if(have[a]!=null) cov+=w[a];
+    if(cov<0.3)continue;
+    const allR=ids.filter(a=>have[a]!=null).map(a=>have[a]);
+    let r=0;
+    for(const a of ids){
+      if(have[a]!=null){ r+=w[a]*have[a]; continue; }
+      const same=ids.filter(b=>have[b]!=null&&inp.cls[b]===inp.cls[a]).map(b=>have[b]);
+      r+=w[a]*stMedian(same.length?same:allR);
+    }
+    out.push(r); wk.push(k);
+  }
+  return {r:out,weeks:wk};
+}
+function stSimulate(R,H,bands){
+  const n=R.length, mu=mean(R), Rd=R.map(x=>x-mu), rnd=stRng(20241108+H);
+  const ends=new Float64Array(ST_N), mdd=new Float64Array(ST_N), paths=bands?new Float32Array(ST_N*(H+1)):null;
+  for(let s=0;s<ST_N;s++){
+    let v=1, pk=1, dd=0, t=0; if(paths)paths[s*(H+1)]=1;
+    while(t<H){ const st=Math.floor(rnd()*(n-ST_BLOCK+1)); for(let b=0;b<ST_BLOCK&&t<H;b++){ v*=1+Rd[st+b]; if(v>pk)pk=v; const d=v/pk-1; if(d<dd)dd=d; t++; if(paths)paths[s*(H+1)+t]=v; } }
+    ends[s]=v; mdd[s]=dd;
+  }
+  const se=Array.from(ends).sort((a,b)=>a-b), sm=Array.from(mdd).sort((a,b)=>a-b), q=(a,p)=>a[Math.min(a.length-1,Math.max(0,Math.round(p*(a.length-1))))];
+  const res={p5:q(se,.05),p25:q(se,.25),p50:q(se,.5),p75:q(se,.75),p95:q(se,.95),
+    pLoss:se.filter(x=>x<1).length/ST_N, pL20:se.filter(x=>x<.8).length/ST_N, pL40:se.filter(x=>x<.6).length/ST_N,
+    cvar:mean(se.slice(0,Math.max(1,Math.round(ST_N*.05)))), mdd50:q(sm,.5), mdd10:q(sm,.1),
+    vol:sd(R)*Math.sqrt(52), mddHist:[0,0,0,0,0,0,0]};
+  for(const d of mdd){ res.mddHist[Math.min(6,Math.floor(-d*10))]++; }
+  res.mddHist=res.mddHist.map(x=>x/ST_N);
+  if(bands){
+    res.bands={5:[],25:[],50:[],75:[],95:[]}; const col=new Float64Array(ST_N);
+    for(let t=0;t<=H;t++){ for(let s=0;s<ST_N;s++)col[s]=paths[s*(H+1)+t]; col.sort(); for(const p of [5,25,50,75,95]) res.bands[p].push(col[Math.round(p/100*(ST_N-1))]); }
+  }
+  return res;
+}
+function stWorst(R,weeks,n){
+  let best=0, at=null;
+  for(let i=0;i+n<=R.length;i++){ let v=1; for(let j=i;j<i+n;j++)v*=1+R[j]; if(v-1<best){best=v-1;at=weeks[i];} }
+  return at?{r:best,from:dstr(dnum(at)-6)}:null;
+}
+// Gewichte einer Variante: Position (oder Welt-ETF) auf Zielanteil, Rest anteilig
+function stReweight(w,id,target){
+  const cur=w[id]||0, rest=1-cur, out={};
+  for(const [a,x] of Object.entries(w)) out[a]=a===id?target:(rest>0?x*(1-target)/rest:0);
+  if(!(id in w)) out[id]=target;
+  return out;
+}
+function stRun(){
+  const inp=stInputs(); if(!inp)return {ok:false,why:"Keine offenen Positionen."};
+  const hKey=(ST_H.find(h=>h[0]===S.stH)||ST_H[2]);
+  const sig=JSON.stringify([hKey[0],inp.weeks.length,inp.weeks[inp.weeks.length-1],Object.entries(inp.w).map(([a,x])=>a+":"+x.toFixed(4)),S.stVar]);
+  if(S.stCache&&S.stCache.sig===sig)return S.stCache.res;
+  const base=stSeries(inp,inp.w);
+  let res;
+  if(base.r.length<26) res={ok:false,why:`Für den Stresstest braucht es mindestens 26 Wochen gemeinsame Kurshistorie. Im Moment sind es ${base.r.length}.`};
+  else{
+    const H=hKey[1], sim=stSimulate(base.r,H,true);
+    // Datenlage je Position
+    const firstWeek=base.weeks[0];
+    const thin=inp.open.map(p=>{ const ks=Object.keys(inp.W[p.symbol]).sort(); return {p,start:ks[0]||null,n:ks.length}; })
+      .filter(x=>!x.start||x.start>dstr(dnum(firstWeek)+60)).sort((a,b)=>b.p.value-a.p.value);
+    const variants=[{label:"Dein Depot heute",w:inp.w,me:true}];
+    const big=inp.open.slice().sort((a,b)=>b.value-a.value)[0];
+    if(big&&inp.w[big.symbol]>0.2) variants.push({label:`${shortName(big)} auf 15 % begrenzt`,w:stReweight(inp.w,big.symbol,0.15)});
+    if(inp.W.__ETF&&Object.keys(inp.W.__ETF).length>=26) variants.push({label:"30 % in Welt-Aktien (FTSE All-World)",w:stReweight(inp.w,"__ETF",0.3)});
+    const cv=S.stVar; if(cv&&cv.id&&(inp.w[cv.id]!=null||cv.id==="__ETF"&&inp.W.__ETF)){ const nm=cv.id==="__ETF"?"Welt-Aktien":shortName(M.pos[cv.id]); variants.push({label:`Eigene Variante: ${nm} auf ${Math.round(cv.t*100)} %`,w:stReweight(inp.w,cv.id,cv.t),custom:true}); }
+    const vr=variants.map(v=>{ const s=v.me?sim:stSimulate(stSeries(inp,v.w).r,H,false); return {...v,s}; });
+    res={ok:true,V:inp.V,H,hLbl:hKey[2],hKey:hKey[0],n:base.r.length,from:firstWeek,sim,thin,vr,
+      worst:[["4 Wochen",stWorst(base.r,base.weeks,4)],["3 Monate",stWorst(base.r,base.weeks,13)],["6 Monate",stWorst(base.r,base.weeks,26)]].filter(x=>x[1]),
+      choices:inp.open.slice().sort((a,b)=>b.value-a.value).map(p=>[p.symbol,shortName(p),inp.w[p.symbol]]).concat(inp.W.__ETF?[["__ETF","Welt-Aktien (FTSE All-World)",0]]:[])};
+  }
+  S.stCache={sig,res}; return res;
+}
+function stFan(host,T){
+  if(!host)return;
+  const mob=isMobile(), W=Math.max(280,host.clientWidth), H=mob?240:Math.round(Math.min(380,Math.max(260,W*0.24))), pl=6, pr=mob?96:128, pt=12, pb=24;
+  const b=T.sim.bands, n=b[50].length, V=T.V;
+  const mx=Math.max(...b[95])*V*1.04, mn=Math.min(...b[5])*V*0.96;
+  const X=i=>pl+(W-pl-pr)*i/(n-1), Y=v=>pt+(H-pt-pb)*(1-(v-mn)/(mx-mn||1));
+  const area=(lo,hi)=>b[hi].map((v,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(v*V).toFixed(1)).join("")+b[lo].map((v,i)=>[i,v]).reverse().map(([i,v])=>"L"+X(i).toFixed(1)+" "+Y(v*V).toFixed(1)).join("")+"Z";
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Fächer der simulierten Depotwerte">`;
+  niceTicks(mn,mx,4).forEach(t=>{ if(t>mn&&t<mx) s+=`<line x1="${pl}" x2="${W-pr}" y1="${Y(t).toFixed(1)}" y2="${Y(t).toFixed(1)}" stroke="var(--line)"/>`; });
+  s+=`<path d="${area(5,95)}" fill="var(--accent)" opacity=".16"/><path d="${area(25,75)}" fill="var(--accent)" opacity=".3"/>`;
+  s+=`<line x1="${pl}" x2="${W-pr}" y1="${Y(V).toFixed(1)}" y2="${Y(V).toFixed(1)}" stroke="var(--muted)" stroke-dasharray="3 3"/>`;
+  s+=`<path d="${b[50].map((v,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(v*V).toFixed(1)).join("")}" fill="none" stroke="var(--accent)" stroke-width="2.2"/>`;
+  [[95,"beste 5 %"],[50,"Mitte"],[5,"schlechte 5 %"]].forEach(([q,l])=>{ const v=b[q][n-1]*V; s+=`<circle cx="${X(n-1).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="3.5" fill="var(--accent)"/><text x="${(X(n-1)+8).toFixed(1)}" y="${(Y(v)-2).toFixed(1)}" font-size="13" fill="var(--ink)" font-family="var(--f-num)">${eur0(v)}</text><text x="${(X(n-1)+8).toFixed(1)}" y="${(Y(v)+13).toFixed(1)}" font-size="11" fill="var(--muted)">${l}</text>`; });
+  const lbl=T.H===156?["Heute","1 J.","2 J.","3 J."]:T.H===13?["Heute","1 Mon.","2 Mon.","3 Mon."]:T.H===26?["Heute","2 Mon.","4 Mon.","6 Mon."]:mob?["Heute","6 Mon.","12 Mon."]:["Heute","3 Mon.","6 Mon.","9 Mon.","12 Mon."];
+  lbl.forEach((l,j)=>{ const i=Math.round((n-1)*j/(lbl.length-1)); s+=`<text x="${X(i).toFixed(1)}" y="${H-5}" font-size="11" fill="var(--muted)" text-anchor="${j===0?"start":j===lbl.length-1?"end":"middle"}">${l}</text>`; });
+  s+=`<text x="${pl+4}" y="${(Y(V)-6).toFixed(1)}" font-size="11" fill="var(--muted)">Heute ${eur0(V)}</text>`;
+  host.innerHTML=s+"</svg>";
+}
+function stSection(){
+  const T=stRun();
+  const head=`<div class="card-h"><h2>Stresstest: Was kann deinem Depot in ${T.ok?T.hLbl:"12 Monaten"} passieren?</h2>
+    <div class="seg" id="seg-sth">${ST_H.map(([k])=>`<button type="button" data-h="${k}" aria-pressed="${(S.stH||"12M")===k}">${k}</button>`).join("")}</div></div>`;
+  if(!T.ok) return `<section class="card st" aria-label="Stresstest">${head}<div class="card-b"><p class="muted">${esc(T.why)}</p></div></section>`;
+  const s=T.sim, V=T.V, pcI=x=>(x>0?"+":"")+Math.round(x*100)+" %";
+  const often=s.pL20>0?(T.H===52&&s.pL20>=0.02?`etwa jedes ${Math.max(2,Math.round(1/s.pL20))}. Jahr`:`in ${Math.round(s.pL20*100)} von 100 Fällen`):"kam in keiner Simulation vor";
+  const tiles=[["Verlust über 20 %",Math.round(s.pL20*100)+" %",often,true],["Typischer Rückschlag",pcI(s.mdd50),"Median des tiefsten Punkts im Zeitraum",true],["Schlechte 5 %",pcI(s.p5-1),eur0(s.p5*V)+" Depotwert",true],["Ø schlimmste 5 %",pcI(s.cvar-1),"wenn es wirklich schlecht läuft",true]];
+  const hm=Math.max(...s.mddHist)||1, cv=S.stVar||{};
+  const ch=T.choices, curId=cv.id||(ch[0]&&ch[0][0]), curT=cv.t!=null?cv.t:Math.round(((ch.find(c=>c[0]===curId)||[])[2]||0)*100)/100;
+  return `<section class="card st" aria-label="Stresstest">${head}<div class="card-b" style="display:flex;flex-direction:column;gap:16px">
+    <p class="muted" style="margin:0;font-size:13.5px">${ST_N.toLocaleString("de-DE")} simulierte Verläufe aus ${T.n} echten Wochen deiner heutigen Positionen (seit ${fmtDate(T.from)}) · Startwert <span class="mono">${eur0(V)}</span></p>
+    <div id="st-fan"></div>
+    <div class="legend-row"><span><i class="sw" style="background:var(--accent);opacity:.25"></i>90 % der Fälle</span><span><i class="sw" style="background:var(--accent);opacity:.5"></i>50 % der Fälle</span><span><i class="sw" style="background:var(--accent);height:2px"></i>mittlerer Verlauf</span></div>
+    <div class="st-say">In einem normalen Verlauf liegt dein Depot nach ${T.hLbl} zwischen <b>${eur0(s.p25*V)}</b> und <b>${eur0(s.p75*V)}</b>. Im schlechtesten von 20 Fällen landest du bei <b>${eur0(s.p5*V)}</b>, also <b>${pcI(s.p5-1)}</b>.</div>
+  </div></section>
+  <div class="grid2">
+    <section class="card"><div class="card-h"><h2>Auf einen Blick</h2><span class="muted" style="font-size:13px">nach ${T.hLbl}</span></div><div class="card-b"><div class="st-tiles">${tiles.map(([k,v,sub,neg])=>`<div class="st-tile"><span class="k">${k}</span><b class="${neg?"neg":""}">${v}</b><span class="s">${sub}</span></div>`).join("")}</div></div></section>
+    <section class="card"><div class="card-h"><h2>Größter Rückschlag</h2><span class="muted" style="font-size:13px">tiefster Punkt vom Zwischenhoch, Anteil der Simulationen</span></div><div class="card-b">
+      <div class="st-hist">${s.mddHist.map((f,k)=>`<div><em>${Math.round(f*100)} %</em><i style="height:${Math.max(1,f/hm*82).toFixed(0)}%;opacity:${(.35+k*.1).toFixed(2)}"></i><span>${k===6?"> 60":(k?"−":"")+(k*10)+"–"+((k+1)*10)}</span></div>`).join("")}</div>
+      <p class="note" style="margin-top:10px">In der Hälfte der Fälle fällt dein Depot zwischendurch um mehr als <b class="neg mono">${pcI(s.mdd50)}</b>, in jedem zehnten um mehr als <b class="neg mono">${pcI(s.mdd10)}</b>.</p></div></section>
+  </div>
+  <section class="card"><div class="card-h"><h2>Schlimmste Phasen deiner eigenen Historie</h2><span class="muted" style="font-size:13px">mit deiner heutigen Gewichtung zurückgerechnet</span></div><div class="card-b">
+    <div class="st-worst">${T.worst.map(([l,x])=>`<div class="st-tile"><span class="k">${l}</span><b class="neg">${pcI(x.r)}</b><span class="s">ab ${fmtDate(x.from)}<br>${eur0(V*x.r)}</span></div>`).join("")}</div></div></section>
+  <section class="card"><div class="card-h"><h2>Was wäre, wenn …</h2><span class="muted" style="font-size:13px">gleicher Test, andere Aufteilung · dein Depot bleibt unverändert</span></div><div class="card-b" style="display:flex;flex-direction:column;gap:14px">
+    <div class="st-ctl"><label for="st-pos">Position</label><select id="st-pos">${ch.map(([id,nm,w])=>`<option value="${esc(id)}" ${id===curId?"selected":""}>${esc(nm)}${id==="__ETF"?" · neu":` · heute ${nfP1.format(w)}`}</option>`).join("")}</select>
+      <label for="st-t">Zielanteil <b class="mono" id="st-tv">${Math.round(curT*100)} %</b></label><input type="range" id="st-t" min="0" max="80" step="5" value="${Math.round(curT*100)}">
+      <button type="button" class="btn small" id="st-go">Durchrechnen</button></div>
+    <div class="tbl-wrap"><table class="st-tbl"><thead><tr><th>Variante</th><th class="r">Verlust &gt; 20 %</th><th class="r">Typ. Rückschlag</th><th class="r">Schlechte 5 %</th><th class="r hide-sm">Schwankung p. a.</th></tr></thead><tbody>
+      ${T.vr.map(v=>{ const better=!v.me&&v.s.pL20<T.vr[0].s.pL20-0.03; return `<tr class="${v.me?"me":""} ${better?"better":""}"><td>${esc(v.label)}</td><td class="r num" data-k="Verlust > 20 %">${Math.round(v.s.pL20*100)} %</td><td class="r num neg" data-k="Typ. Rückschlag">${pcI(v.s.mdd50)}</td><td class="r num neg" data-k="Schlechte 5 %">${pcI(v.s.p5-1)}</td><td class="r num hide-sm">${Math.round(v.s.vol*100)} %</td></tr>`; }).join("")}
+    </tbody></table></div>
+    <p class="note">Der Anteil der gewählten Position wird auf den Zielwert gesetzt, alle anderen Positionen werden anteilig angepasst. Grün markiert: Varianten, die das Verlustrisiko spürbar senken.</p>
+  </div></section>
+  <p class="note st-limits"><b>Grenzen:</b> Die Simulation zieht zufällig Blöcke von je ${ST_BLOCK} Wochen aus deiner Historie, so bleiben Zusammenhänge zwischen den Positionen und Crash-Phasen erhalten. Sie unterstellt keinen Trend und sagt keine Kurse voraus. Sie zeigt die Bandbreite, wenn die Zukunft so schwankt wie die letzten bis zu 3 Jahre.${T.thin.length?` Kurze Historie: ${T.thin.slice(0,6).map(x=>esc(shortName(x.p))+(x.start?" ab "+fmtDate(x.start).slice(3):" ohne Kurse")).join(", ")}${T.thin.length>6?" und weitere":""}. Fehlende Wochen werden mit ähnlichen Positionen derselben Anlageklasse gefüllt.`:""} Positionen, die du noch nicht eingetragen hast, fehlen natürlich auch hier.</p>`;
+}
+function stBind(v){
+  v.querySelectorAll("#seg-sth button").forEach(b=>b.onclick=()=>{ S.stH=b.dataset.h; saveUi(); render(); });
+  const t=v.querySelector("#st-t"), tv=v.querySelector("#st-tv"), sel=v.querySelector("#st-pos");
+  if(t){ t.oninput=()=>{ tv.textContent=t.value+" %"; };
+    sel.onchange=()=>{ const c=(stRun().choices||[]).find(x=>x[0]===sel.value); const w=c?Math.round(c[2]*20)*5:0; t.value=w; tv.textContent=w+" %"; };
+    v.querySelector("#st-go").onclick=()=>{ S.stVar={id:sel.value,t:+t.value/100}; render(); };
+  }
+  const T=S.stCache&&S.stCache.res; if(T&&T.ok) stFan(v.querySelector("#st-fan"),T);
+}
+
 /* kleine SVG-Bausteine */
 function svgDalio(N,rho){
   const Wd=560,H=250,pl=44,pr=16,pt=14,pb=36, X=n=>pl+(Wd-pl-pr)*(n-1)/19, Y=v=>pt+(H-pt-pb)*(1-v);
@@ -1033,6 +1229,8 @@ function renderAnalysis(v){
   <section class="card"><div class="card-h"><h2>Drawdown</h2><span class="muted" style="font-size:13px">Abstand zum bisherigen Höchststand${Q.ddDays>0?` · seit ${Q.ddDays} Tagen unter dem Hoch`:" · Depot steht am Hoch"}</span></div>
     <div class="chart" id="a-dd" style="padding:8px"></div></section>
 
+  ${stSection()}
+
   <div class="dalio-h"><span class="eyebrow">Gleichgewicht nach Ray Dalio</span><p class="muted">Viele Ertragsströme, die sich unabhängig voneinander bewegen, und keiner davon dominiert das Risiko.</p></div>
   <div class="grid2">
     <section class="card"><div class="card-h"><h2>Unabhängige Ertragsströme</h2></div><div class="card-b" style="display:flex;flex-direction:column;gap:12px">
@@ -1105,6 +1303,7 @@ function renderAnalysis(v){
 
   v.querySelectorAll("#seg-arange button").forEach(b=>b.onclick=()=>{ S.aRange=b.dataset.r; saveUi(); render(); });
   drawAnalysisCharts(Q);
+  stBind(v);
 }
 function drawAnalysisCharts(Q){
   if(!Q||!Q.ok)return;
@@ -1263,7 +1462,7 @@ async function snapDecrypt(f,key){
 
 /* ---------- Handy-Ansicht (nur lesen) ---------- */
 const SNAP=!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const BUILD="a33a14e9b556";
+const BUILD="97b81cd196e3";
 // Ist die Seite älter als der Depotstand, einmal mit neuer Adresse laden (umgeht den Zwischenspeicher)
 function snapCheckBuild(obj){
   if(!obj||!obj.build||BUILD===obj.build||BUILD.indexOf("DEPOT_")>=0)return false;
