@@ -407,7 +407,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--line);border-bottom:0}
 .dialog header h3{margin:0;font-size:17px}
 .dialog .body{padding:16px 18px;display:flex;flex-direction:column;gap:14px}
 .dialog footer{display:flex;justify-content:flex-end;gap:8px;padding:14px 18px;border-top:1px solid var(--line);flex-wrap:wrap}
-.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;align-items:start}
 .field{display:flex;flex-direction:column;gap:5px;min-width:0}
 .field label{font-size:12px;font-weight:600;color:var(--muted)}
 .field input,.field select,.field textarea{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:9px 10px;font-size:15px;width:100%}
@@ -1496,7 +1496,7 @@ async function snapDecrypt(f,key){
 
 /* ---------- Handy-Ansicht (nur lesen) ---------- */
 const SNAP=!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const BUILD="b97536b607e0";
+const BUILD="c867478052d7";
 // Ist die Seite älter als der Depotstand, einmal mit neuer Adresse laden (umgeht den Zwischenspeicher)
 function snapCheckBuild(obj){
   if(!obj||!obj.build||BUILD===obj.build||BUILD.indexOf("DEPOT_")>=0)return false;
@@ -1902,8 +1902,8 @@ function openTx(tx,presetId){
     </div>
     <div class="form-grid">
       <div class="field"><label for="tx-date">Datum</label><input id="tx-date" type="date" value="${esc(t.date)}" min="1990-01-01" max="${localToday()}" required></div>
-      <div class="field" data-qp><label for="tx-qty" id="tx-qty-l">Stück</label><input id="tx-qty" inputmode="decimal" value="${esc(numVal(t.qty))}" placeholder="0"></div>
-      <div class="field" data-qp data-px><label for="tx-price" id="tx-price-l">Kurs je Stück (€)</label><input id="tx-price" inputmode="decimal" value="${esc(numVal(t.price))}" placeholder="0,00"><span class="hint" id="tx-price-h" hidden>Kurs am Tag des Erhalts, wird vorgeschlagen</span></div>
+      <div class="field" data-qp><label for="tx-qty" id="tx-qty-l">Stück</label><input id="tx-qty" inputmode="decimal" value="${esc(numVal(t.qty))}" placeholder="0"><span class="hint" id="tx-qty-h" hidden>inklusive Netzwerkgebühr</span></div>
+      <div class="field" data-qp data-px><label for="tx-price" id="tx-price-l">Kurs je Stück (€)</label><input id="tx-price" inputmode="decimal" value="${esc(numVal(t.price))}" placeholder="0,00"><span class="hint" id="tx-price-h" hidden>am Tag des Erhalts, wird vorgeschlagen</span></div>
       <div class="field" data-tr hidden><label for="tx-feeq">Netzwerkgebühr (Stück)</label><input id="tx-feeq" inputmode="decimal" value="${esc(numVal(t.feeQty))}" placeholder="0"><span class="hint">Coins, die beim Senden verbrannt werden</span></div>
       <div class="field" data-amt hidden><label for="tx-amount" id="tx-amount-l">Dividende brutto (€)</label><input id="tx-amount" inputmode="decimal" value="${esc(numVal(t.amount))}" placeholder="0,00"></div>
     </div>
@@ -1943,8 +1943,8 @@ function openTx(tx,presetId){
     $("#tx-assetf").hidden=isInt; $("#tx-inthint").hidden=!isInt; if(isInt)$("#tx-new").hidden=true; else if(chosen&&!chosen.existing)$("#tx-new").hidden=false;
     const isTr=type==="transfer", isSt=type==="staking";
     d.querySelectorAll("[data-tr]").forEach(e=>e.hidden=!isTr); d.querySelector("[data-px]").hidden=inc||isTr; $("#tx-taxf").hidden=isTr;
-    $("#tx-qty-l").textContent=isTr?"Stück gesendet (inkl. Gebühr)":isSt?"Stück erhalten":"Stück";
-    $("#tx-price-l").textContent=isSt?"Wert je Stück bei Erhalt (€)":"Kurs je Stück (€)"; $("#tx-price-h").hidden=!isSt;
+    $("#tx-qty-l").textContent=isTr?"Stück gesendet":isSt?"Stück erhalten":"Stück"; $("#tx-qty-h").hidden=!isTr;
+    $("#tx-price-l").textContent=isSt?"Wert je Stück (€)":"Kurs je Stück (€)"; $("#tx-price-h").hidden=!isSt;
     $("#tx-fee-l").textContent=isTr?"Zusätzliche Gebühr (€)":"Gebühren (€)";
     $("#tx-fee-h").textContent=isTr?"meist 0, falls in Euro berechnet":isSt?"meist 0, Provision ist oft schon abgezogen":"Ordergebühr, Fremdspesen";
     $("#tx-broker-l").textContent=isTr?"Von Broker / Wallet":isSt?"Broker / Wallet":"Broker";
