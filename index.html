@@ -391,6 +391,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--line);border-bottom:0}
 .metric .k{font-size:12px;color:var(--muted);font-weight:600}
 .metric .v{font-family:var(--f-num);font-size:20px;letter-spacing:-.03em}
 .metric .s{font-size:12px;color:var(--muted)}
+.metric .pair{display:flex;flex-direction:column;gap:1px;line-height:1.2}
 .heat{border-collapse:separate;border-spacing:3px;font-size:12px}
 .heat th{padding:2px 4px;border:0;text-transform:none;letter-spacing:0;text-align:center}
 .heat td{padding:6px 4px;border:0;text-align:center;border-radius:4px;font-family:var(--f-num);font-size:11px;min-width:44px}
@@ -513,7 +514,7 @@ function compute(){
   const today=localToday();
   const txs=S.tx.filter(t=>t&&t.date&&TYPE[t.type]&&(t.symbol||t.type==="interest")).slice().sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:(a.createdAt||0)-(b.createdAt||0));
   const pos={};
-  const P=sym=>pos[sym]||(pos[sym]={symbol:sym,qty:0,cost:0,realized:0,divs:0,staking:0,burn:0,fees:0,taxes:0,invested:0,brokers:{},lots:{},first:null,last:null,n:0});
+  const P=sym=>pos[sym]||(pos[sym]={symbol:sym,qty:0,cost:0,realized:0,soldCost:0,divs:0,staking:0,burn:0,fees:0,taxes:0,invested:0,brokers:{},lots:{},first:null,last:null,n:0});
   let interest=0, intFees=0, intTaxes=0;
   for(const t of txs){
     if(t.type==="interest"){ interest+=(+t.amount||0)-(+t.fee||0)-(+t.tax||0); intFees+=+t.fee||0; intTaxes+=+t.tax||0; continue; }
@@ -529,7 +530,7 @@ function compute(){
         const others=Object.values(p.lots).filter(x=>x!==L&&x.q>1e-12), oq=others.reduce((s,x)=>s+x.q,0);
         if(oq>0){ const take=Math.min(need,oq); for(const x of others){ const share=take*x.q/oq, c=x.c/x.q*share; out+=c; x.c-=c; x.q-=share; } need-=take; } }
       if(L.q<1e-9){L.q=0;L.c=0;}
-      p.realized+=qq*pr-fee-out; p.qty-=qq; p.brokers[b]=(p.brokers[b]||0)-qq;
+      p.realized+=qq*pr-fee-out; p.soldCost+=out; p.qty-=qq; p.brokers[b]=(p.brokers[b]||0)-qq;
       p.cost=Object.values(p.lots).reduce((s,x)=>s+x.c,0);
       if(p.qty<1e-9){p.qty=0;p.cost=0;for(const x of Object.values(p.lots)){x.q=0;x.c=0;}}
     }
@@ -1358,6 +1359,7 @@ function drawAnalysisCharts(Q){
   }
 }
 
+function pairV(a,r){ return `<span class="pair ${cls(a)}"><span>${eur(a,true)}</span><span>${r==null?"–":pct(r)}</span></span>`; }
 function metric(k,v,s){ return `<div class="metric"><span class="k">${k}</span><span class="v">${v}</span><span class="s">${s||""}</span></div>`; }
 function monthLabel(k){ const [y,m]=k.split("-"); return MONTHS[+m-1]+" "+y.slice(2); }
 function topItem(p){ return `<div class="it"><span>${esc(p.asset.name||p.symbol)}</span><span class="num ${cls(p.unrealPct)}"><strong>${pct(p.unrealPct)}</strong> · ${eur(p.unreal,true)}</span></div>`; }
@@ -1496,7 +1498,7 @@ async function snapDecrypt(f,key){
 
 /* ---------- Handy-Ansicht (nur lesen) ---------- */
 const SNAP=!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const BUILD="d5d3d714ab4c";
+const BUILD="dc3f41b6a851";
 // Ist die Seite älter als der Depotstand, einmal mit neuer Adresse laden (umgeht den Zwischenspeicher)
 function snapCheckBuild(obj){
   if(!obj||!obj.build||BUILD===obj.build||BUILD.indexOf("DEPOT_")>=0)return false;
@@ -2042,9 +2044,9 @@ function openAsset(sym){
       ${metric("Bestand",nfQ.format(p.qty)+" Stück",p.qty>0?"Wert "+eur(p.value):"Position geschlossen")}
       ${metric("Ø Einstand",p.qty>0?priceFmt(p.avg):"–",Object.values(p.lots).filter(x=>x.q>1e-9).length>1?"gemeinsam, inkl. Kaufgebühren":"inkl. Kaufgebühren")}
       ${metric("Kurs",priceFmt(p.price),p.priceAt?ageText(p.priceAt):esc(p.priceSrc))}
-      ${metric("Unrealisiert",`<span class="${cls(p.unreal)}">${eur(p.unreal,true)}</span>`,p.qty>0?pct(p.unrealPct):"")}
-      ${metric("Realisiert",`<span class="${cls(p.realized)}">${eur(p.realized,true)}</span>`,"aus Verkäufen")}
-      ${metric("Gesamtergebnis",`<span class="${cls(p.total)}">${eur(p.total,true)}</span>`,"inkl. Dividenden "+eur(p.divs)+(p.staking?" · Staking "+eur(p.staking):""))}
+      ${metric("Unrealisiert",pairV(p.unreal,p.qty>0&&p.cost>0?p.unreal/p.cost:null),"auf den Einstand")}
+      ${metric("Realisiert",pairV(p.realized,p.soldCost>0?p.realized/p.soldCost:null),"aus Verkäufen, auf deren Einstand")}
+      ${metric("Gesamtergebnis",pairV(p.total,p.invested>0?p.total/p.invested:null),"auf alle Käufe · inkl. Dividenden "+eur(p.divs)+(p.staking?" · Staking "+eur(p.staking):""))}
     </div>
     ${(()=>{ const ls=Object.entries(p.lots).filter(([b,x])=>x.q>1e-9); if(ls.length<2)return "";
       return `<div class="bill"><span class="eyebrow">Einstand je Broker</span>${ls.map(([b,x])=>`<div class="bill-r"><span>${esc(b)} <span class="muted mono" style="font-size:12px">${nfQ.format(x.q)} Stk.</span></span><span class="mono">Ø ${priceFmt(x.c/x.q)}</span></div>`).join("")}
