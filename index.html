@@ -188,8 +188,8 @@ body.snap .top .actions{display:none}
   .top{align-items:flex-start}
   .subline{gap:6px 10px}
 }
-.lg{width:var(--s);height:var(--s);border-radius:calc(var(--s) * .26);background:#fff;display:grid;place-items:center;overflow:hidden;flex:none;box-shadow:inset 0 0 0 1px rgba(20,34,48,.08)}
-.lg img{width:86%;height:86%;object-fit:contain;display:block}
+.lg{width:var(--s);height:var(--s);border-radius:calc(var(--s) * .26);display:grid;place-items:center;overflow:hidden;flex:none}
+.lg img{width:100%;height:100%;object-fit:contain;display:block}
 .lg.ini{color:#fff;font-weight:800;font-size:calc(var(--s) * .34);letter-spacing:.02em;box-shadow:none}
 .asset-row{display:flex;align-items:center;gap:9px;min-width:0}
 #pos-table .asset .n{max-width:210px}
@@ -1496,7 +1496,7 @@ async function snapDecrypt(f,key){
 
 /* ---------- Handy-Ansicht (nur lesen) ---------- */
 const SNAP=!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const BUILD="c867478052d7";
+const BUILD="d5d3d714ab4c";
 // Ist die Seite älter als der Depotstand, einmal mit neuer Adresse laden (umgeht den Zwischenspeicher)
 function snapCheckBuild(obj){
   if(!obj||!obj.build||BUILD===obj.build||BUILD.indexOf("DEPOT_")>=0)return false;
@@ -1703,9 +1703,30 @@ if(MQ&&MQ.addEventListener) MQ.addEventListener("change",()=>schedule());
 function posColor(i){ const hues=[228,170,35,280,350,200,95,20,310,130,255,55]; return `hsl(${hues[i%hues.length]} 62% 58%)`; }
 function initials(p){ const t=(p.asset.ticker||p.asset.name||p.symbol||"?").replace(/[^A-Za-z0-9]/g,""); return (t.slice(0,2)||"?").toUpperCase(); }
 function shortNm(p){ return (p.asset.name||p.symbol).replace(/ \(ADR\)| Kurs in Euro.*$/g,""); }
+/* Logos ohne weißen Rahmen: im dunklen Design werden schwarze und graue Teile aufgehellt, Markenfarben bleiben */
+const LOGO_DARK={}, LOGO_BUSY={};
+function isDarkTheme(){ const t=document.documentElement.dataset.theme; return t==="dark"||(t!=="light"&&window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches); }
+function prepLogoDark(sym,src){
+  if(LOGO_BUSY[sym])return; LOGO_BUSY[sym]=1;
+  const im=new Image(); im.onload=()=>{ try{
+    const w=im.naturalWidth||128, hh=im.naturalHeight||128, c=document.createElement("canvas"); c.width=w; c.height=hh;
+    const x=c.getContext("2d"); x.drawImage(im,0,0); const d=x.getImageData(0,0,w,hh), a=d.data;
+    const opaque=[0,(w-1)*4,(hh-1)*w*4,((hh-1)*w+w-1)*4].every(i=>a[i+3]>200);
+    if(!opaque){ for(let i=0;i<a.length;i+=4){ if(a[i+3]<10)continue; const r=a[i],g=a[i+1],b=a[i+2], mx=Math.max(r,g,b), mn=Math.min(r,g,b), L=(0.299*r+0.587*g+0.114*b)/255, sat=mx?(mx-mn)/mx:0;
+      if(sat<0.28&&L<0.5){ const v=Math.round(238-L*70); a[i]=a[i+1]=a[i+2]=v; } }
+      x.putImageData(d,0,0); LOGO_DARK[sym]=c.toDataURL("image/png"); }
+    else LOGO_DARK[sym]=src;
+    document.querySelectorAll(`img[data-lg="${CSS.escape(sym)}"]`).forEach(e=>{ if(isDarkTheme())e.src=LOGO_DARK[sym]; e.style.visibility=""; });
+  }catch(e){ LOGO_DARK[sym]=src; document.querySelectorAll(`img[data-lg="${CSS.escape(sym)}"]`).forEach(e=>e.style.visibility=""); } };
+  im.onerror=()=>{ LOGO_DARK[sym]=src; document.querySelectorAll(`img[data-lg="${CSS.escape(sym)}"]`).forEach(e=>e.style.visibility=""); };
+  im.src=src;
+}
+function logoSrc(sym){ const src=S.logos&&S.logos[sym]; if(!src)return null;
+  const key=src.length+":"+src.slice(-40); if(LOGO_DARK.__k&&LOGO_DARK.__k[sym]!==key){ delete LOGO_DARK[sym]; delete LOGO_BUSY[sym]; } (LOGO_DARK.__k||(LOGO_DARK.__k={}))[sym]=key;
+  if(!isDarkTheme())return src; if(LOGO_DARK[sym])return LOGO_DARK[sym]; prepLogoDark(sym,src); return src; }
 function logoTile(p,size,col){
-  const src=S.logos&&S.logos[p.symbol];
-  if(src) return `<span class="lg" style="--s:${size}px"><img src="${src}" alt="" loading="lazy"></span>`;
+  const src=logoSrc(p.symbol);
+  if(src) return `<span class="lg" style="--s:${size}px"><img src="${src}" data-lg="${esc(p.symbol)}" alt="" loading="lazy" style="${LOGO_DARK[p.symbol]||!isDarkTheme()?"":"visibility:hidden"}"></span>`;
   return `<span class="lg ini" style="--s:${size}px;background:${col||p._col||clsColor(p.asset.cls)}">${esc(initials(p))}</span>`;
 }
 const MSORT=[["value","Wert"],["pl","G/V %"],["day","Heute"],["name","Name"]];
