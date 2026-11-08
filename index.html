@@ -391,7 +391,8 @@ tfoot td{font-weight:700;border-top:1px solid var(--line);border-bottom:0}
 .metric .k{font-size:12px;color:var(--muted);font-weight:600}
 .metric .v{font-family:var(--f-num);font-size:20px;letter-spacing:-.03em}
 .metric .s{font-size:12px;color:var(--muted)}
-.metric .pair{display:flex;flex-direction:column;gap:1px;line-height:1.2}
+.metric .pair{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 16px}
+.statgrid .metric.wide{grid-column:span 2}
 .heat{border-collapse:separate;border-spacing:3px;font-size:12px}
 .heat th{padding:2px 4px;border:0;text-transform:none;letter-spacing:0;text-align:center}
 .heat td{padding:6px 4px;border:0;text-align:center;border-radius:4px;font-family:var(--f-num);font-size:11px;min-width:44px}
@@ -1360,7 +1361,7 @@ function drawAnalysisCharts(Q){
 }
 
 function pairV(a,r){ return `<span class="pair ${cls(a)}"><span>${eur(a,true)}</span><span>${r==null?"–":pct(r)}</span></span>`; }
-function metric(k,v,s){ return `<div class="metric"><span class="k">${k}</span><span class="v">${v}</span><span class="s">${s||""}</span></div>`; }
+function metric(k,v,s){ return `<div class="metric${String(v).includes('class="pair')?" wide":""}"><span class="k">${k}</span><span class="v">${v}</span><span class="s">${s||""}</span></div>`; }
 function monthLabel(k){ const [y,m]=k.split("-"); return MONTHS[+m-1]+" "+y.slice(2); }
 function topItem(p){ return `<div class="it"><span>${esc(p.asset.name||p.symbol)}</span><span class="num ${cls(p.unrealPct)}"><strong>${pct(p.unrealPct)}</strong> · ${eur(p.unreal,true)}</span></div>`; }
 
@@ -1498,7 +1499,7 @@ async function snapDecrypt(f,key){
 
 /* ---------- Handy-Ansicht (nur lesen) ---------- */
 const SNAP=!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const BUILD="dc3f41b6a851";
+const BUILD="e9faa0f96a1d";
 // Ist die Seite älter als der Depotstand, einmal mit neuer Adresse laden (umgeht den Zwischenspeicher)
 function snapCheckBuild(obj){
   if(!obj||!obj.build||BUILD===obj.build||BUILD.indexOf("DEPOT_")>=0)return false;
@@ -2041,7 +2042,8 @@ function openAsset(sym){
   const d=showModal(`<header><div class="asset-row">${logoTile(p,40)}<div class="asset"><h3>${esc(a.name||sym)}</h3><span class="t">${esc(a.ticker||sym)} · ${esc((CLS[a.cls]||CLS.other).label)}${a.isin?" · "+esc(a.isin):""}</span></div></div><button class="btn ghost small" data-close type="button" aria-label="Schließen">✕</button></header>
   <div class="body">
     <div class="statgrid">
-      ${metric("Bestand",nfQ.format(p.qty)+" Stück",p.qty>0?"Wert "+eur(p.value):"Position geschlossen")}
+      ${metric("Bestand",nfQ.format(p.qty)+" Stück",p.qty>0?"":"Position geschlossen")}
+      ${metric("Wert",p.qty>0?eur(p.value):"–",p.qty>0&&p.share!=null?nfP1.format(p.share)+" vom Depot":"")}
       ${metric("Ø Einstand",p.qty>0?priceFmt(p.avg):"–",Object.values(p.lots).filter(x=>x.q>1e-9).length>1?"gemeinsam, inkl. Kaufgebühren":"inkl. Kaufgebühren")}
       ${metric("Kurs",priceFmt(p.price),p.priceAt?ageText(p.priceAt):esc(p.priceSrc))}
       ${metric("Unrealisiert",pairV(p.unreal,p.qty>0&&p.cost>0?p.unreal/p.cost:null),"auf den Einstand")}
