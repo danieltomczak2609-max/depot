@@ -293,6 +293,42 @@ body.snap .top .actions{display:none}
   .st-tbl tr.better{background:color-mix(in srgb,var(--gain) 9%,transparent);border-radius:10px}.st-tbl tr.better td{background:none}
   .st-ctl select{width:100%}
 }
+.pbar{display:inline-flex;align-self:flex-start;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px;margin-bottom:6px}
+.pbar[hidden]{display:none}
+.pbar button{border:0;background:none;color:var(--muted);font-weight:650;font-size:14px;padding:7px 16px;border-radius:999px;cursor:pointer}
+.pbar button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+body.ro .edit-only{display:none!important}
+body.picking .tabs,body.picking .top .actions,body.picking #banner,body.picking #h-total{display:none}
+body.picking .brand .eyebrow{display:none}
+body.picking #h-sub{font-size:20px;font-weight:650;color:var(--ink)}
+body.picking #h-sub .muted{color:var(--ink)}
+.picker{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:8px}
+.pick{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px;cursor:pointer;transition:transform .12s,border-color .12s;min-width:0}
+.pick:hover{border-color:var(--accent);transform:translateY(-2px)}
+.pick:active{transform:scale(.99)}
+.pick-av{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:16px;margin-bottom:6px}
+.pick-n{font-size:20px;font-weight:700}
+.pick-v{font-family:var(--f-num);font-size:26px;letter-spacing:-.03em}
+.pick-s{font-size:13px;color:var(--muted)}
+.fam-bar{display:flex;height:12px;border-radius:6px;overflow:hidden;gap:2px;background:var(--surface-2);margin-bottom:14px}
+.fam-bar i{display:block;height:100%}
+.fam-t{display:flex;flex-direction:column}
+.fam-r{display:grid;grid-template-columns:minmax(90px,1.2fr) repeat(4,minmax(0,1fr));gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line);font-size:15px}
+.fam-r.h{border-top:0;padding-top:0;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.fam-r>span:not(:first-child){text-align:right}
+.fam-r .num{font-family:var(--f-num);letter-spacing:-.02em}
+.fam-n{display:flex;align-items:center;gap:8px;font-weight:650}
+.fam-n i{width:10px;height:10px;border-radius:3px;display:block}
+@media (max-width:640px){
+  .pbar{display:flex;width:100%;margin:0 0 4px}.pbar[hidden]{display:none}.pbar button{flex:1;padding:8px 6px}
+  .picker{grid-template-columns:1fr;gap:10px}
+  .pick{display:grid;grid-template-columns:48px minmax(0,1fr) auto;grid-template-rows:auto auto;column-gap:14px;row-gap:2px;align-items:center;padding:16px}
+  .pick-av{grid-row:1 / span 2;margin:0}
+  .pick-n{font-size:17px}.pick-v{font-size:19px;grid-column:3;grid-row:1;text-align:right}
+  .pick-s{grid-column:2 / span 2;grid-row:2}
+  .fam-r{grid-template-columns:minmax(64px,1fr) repeat(3,auto);font-size:13px;gap:8px}
+  .fam-r .hide-sm{display:none}
+}
 .pill.info{background:var(--accent-soft);color:var(--accent)}
 .srcline{font-size:12px;color:var(--muted)}
 .pill.flat{background:var(--surface-2);color:var(--muted)}
@@ -459,6 +495,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--line);border-bottom:0}
 <body>
 
 <div class="wrap" id="app">
+  <nav class="pbar" id="pbar" aria-label="Depot wählen" hidden></nav>
   <header class="top">
     <div class="brand">
       <span class="eyebrow">Depotwert</span>
@@ -748,6 +785,7 @@ function allLoaded(){ return S.loaded.tx&&S.loaded.assets&&S.loaded.quotes; }
 
 function render(){
   if(SNAP&&!S.snapKey)return;
+  if(!S.profile){ renderPicker(); return; }
   M=compute();
   renderHeader(); renderBanner();
   document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",String(t.dataset.view===S.view)));
@@ -787,6 +825,7 @@ function renderOverview(v){
   if(isMobile())return renderOverviewMobile(v);
   const {k}=M;
   v.innerHTML=`<div style="display:flex;flex-direction:column;gap:20px">
+  ${S.profile==="family"?familyCard():""}
   <section class="card" aria-label="Gesamtchart">
     <div class="card-h"><h2>Gesamtentwicklung</h2>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -1380,10 +1419,123 @@ function metric(k,v,s){ return `<div class="metric${String(v).includes('class="p
 function monthLabel(k){ const [y,m]=k.split("-"); return MONTHS[+m-1]+" "+y.slice(2); }
 function topItem(p){ return `<div class="it"><span>${esc(p.asset.name||p.symbol)}</span><span class="num ${cls(p.unrealPct)}"><strong>${pct(p.unrealPct)}</strong> · ${eur(p.unreal,true)}</span></div>`; }
 
+/* ---------- Profile: Mama, Daniel, Familie ---------- */
+const PROFILE_LABEL={mama:"Mama",daniel:"Daniel",family:"Familie"};
+const PERSON_COL={mama:"var(--c-etf)",daniel:"var(--accent)"};
+S.raw={daniel:{tx:[],assets:{}},mama:{tx:[],assets:{}}}; S.profile=null; S.gate=null; S.dataVer=0;
+function profTx(p){ return (S.raw[p]&&S.raw[p].tx)||[]; }
+function gateUnlocked(){
+  if(!SNAP)return true;
+  if(!S.gate)return false;
+  if(S.gateOk===S.gate.hash)return true;
+  try{ return localStorage.getItem("depot.dgate")===S.gate.hash; }catch(e){ return false; }
+}
+function applyProfile(){
+  const p=S.profile||"daniel";
+  if(p==="family"){
+    const tag=(t,who)=>({...t,person:who,id:who+":"+t.id,broker:(t.broker||"–")+" · "+PROFILE_LABEL[who],toBroker:t.toBroker?t.toBroker+" · "+PROFILE_LABEL[who]:t.toBroker});
+    S.tx=[...profTx("daniel").map(t=>tag(t,"daniel")),...profTx("mama").map(t=>tag(t,"mama"))];
+    S.assets={...(S.raw.mama.assets||{}),...(S.raw.daniel.assets||{})};
+  }else{
+    S.tx=profTx(p).slice(); S.assets=(S.raw[p]&&S.raw[p].assets)||{};
+  }
+  document.body.classList.toggle("ro",p==="family");
+  const e=document.querySelector(".brand .eyebrow"); if(e) e.textContent=S.profile?"Depotwert · "+PROFILE_LABEL[p]:"Depotwert";
+  renderProfileBar();
+}
+function renderProfileBar(){
+  const b=document.getElementById("pbar"); if(!b)return;
+  if(!S.profile){ b.innerHTML=""; b.hidden=true; return; }
+  b.hidden=false;
+  b.innerHTML=["mama","daniel","family"].map(p=>`<button type="button" data-p="${p}" aria-pressed="${S.profile===p}">${p==="daniel"&&SNAP&&!gateUnlocked()?'<span aria-hidden="true">🔒</span> ':""}${PROFILE_LABEL[p]}</button>`).join("");
+  b.querySelectorAll("button").forEach(x=>x.onclick=()=>switchProfile(x.dataset.p));
+}
+function switchProfile(p){
+  if(!PROFILE_LABEL[p])return;
+  if(p==="daniel"&&!gateUnlocked()){ openGate(()=>switchProfile("daniel")); return; }
+  S.profile=p; try{ sessionStorage.setItem("depot.profile",p); }catch(e){}
+  applyProfile(); document.body.classList.remove("picking");
+  render(); window.scrollTo(0,0);
+  if(SNAP&&S.snapKey) snapLive(false);
+}
+/* Kennzahlen je Person (für Startauswahl und Familienvergleich) */
+let PSTAT={ver:-1,data:null};
+function personStats(){
+  if(PSTAT.ver===S.dataVer&&PSTAT.data)return PSTAT.data;
+  const keep={tx:S.tx,assets:S.assets}, out={};
+  for(const p of ["mama","daniel"]){
+    S.tx=profTx(p).slice(); S.assets=(S.raw[p]&&S.raw[p].assets)||{};
+    try{ out[p]=S.tx.length?compute().k:null; }catch(e){ out[p]=null; }
+  }
+  S.tx=keep.tx; S.assets=keep.assets;
+  PSTAT={ver:S.dataVer,data:out}; return out;
+}
+function renderPicker(){
+  document.body.classList.add("picking");
+  document.getElementById("h-total").textContent="–";
+  document.getElementById("h-sub").innerHTML='<span class="muted">Wessen Depot möchtest du sehen?</span>';
+  renderProfileBar();
+  const v=document.getElementById("view");
+  if(!allLoaded()){ v.innerHTML='<div class="card"><div class="empty">Depots werden geladen …</div></div>'; return; }
+  const st=personStats(), locked=SNAP&&!gateUnlocked();
+  const fam=(st.mama?st.mama.value:0)+(st.daniel?st.daniel.value:0);
+  const tile=(p,k,sub)=>`<button type="button" class="pick" data-p="${p}">
+      <span class="pick-av" style="background:${p==="family"?"linear-gradient(135deg,var(--c-etf),var(--accent))":PERSON_COL[p]}">${p==="family"?"M+D":PROFILE_LABEL[p][0]}</span>
+      <span class="pick-n">${PROFILE_LABEL[p]}</span>
+      <span class="pick-v">${k}</span>
+      <span class="pick-s">${sub}</span></button>`;
+  const one=(p)=>{ const k=st[p]; if(p==="daniel"&&locked) return tile(p,"🔒","eigenes Passwort"); return tile(p,k?eur0(k.value):"–",k?`<span class="${cls(k.profit)}">${eur(k.profit,true)}</span> · ${pct(k.twr)}`:"noch leer"); };
+  v.innerHTML=`<section class="picker" aria-label="Depot wählen">
+    ${one("mama")}${one("daniel")}
+    ${tile("family",eur0(fam),"beide Depots zusammen")}
+  </section>`;
+  v.querySelectorAll(".pick").forEach(x=>x.onclick=()=>switchProfile(x.dataset.p));
+}
+function openGate(then){
+  if(!S.gate){
+    const d=showModal(`<header><h3>Daniels Depot</h3><button class="btn ghost small" data-close type="button" aria-label="Schließen">✕</button></header>
+      <div class="body"><p style="margin:0">Für Daniels Depot ist noch kein eigenes Passwort festgelegt. Daniel legt es am Mac fest: unten auf <b>Handy-Zugriff</b> klicken, dann „Passwort für Daniel“.</p></div>
+      <footer><button class="btn primary" data-close type="button">Verstanden</button></footer>`);
+    return d;
+  }
+  const d=showModal(`<header><h3>Daniels Depot</h3><button class="btn ghost small" data-close type="button" aria-label="Schließen">✕</button></header>
+    <form class="body" id="g-form" autocomplete="off">
+      <p class="muted" style="margin:0">Dieses Depot ist mit einem eigenen Passwort geschützt.</p>
+      <div class="field"><label for="g-pw">Passwort für Daniel</label><input id="g-pw" type="password" autocapitalize="off" spellcheck="false" required></div>
+      <label class="muted" style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="g-keep"> Auf diesem Gerät merken</label>
+      <div class="err" id="g-err" role="alert"></div>
+    </form>
+    <footer><button class="btn" data-close type="button">Abbrechen</button><button class="btn primary" type="button" id="g-go">Öffnen</button></footer>`);
+  const $=s=>d.querySelector(s);
+  setTimeout(()=>$("#g-pw").focus(),60);
+  const go=async()=>{
+    const btn=$("#g-go"); btn.disabled=true; btn.textContent="Prüfe …"; $("#g-err").textContent="";
+    try{
+      const base=await crypto.subtle.importKey("raw",new TextEncoder().encode($("#g-pw").value),"PBKDF2",false,["deriveBits"]);
+      const bits=new Uint8Array(await crypto.subtle.deriveBits({name:"PBKDF2",hash:"SHA-256",salt:b64d(S.gate.salt),iterations:S.gate.iter||200000},base,256));
+      if(b64eJs(bits)!==S.gate.hash) throw new Error("Das Passwort stimmt nicht.");
+      S.gateOk=S.gate.hash; if($("#g-keep").checked){ try{ localStorage.setItem("depot.dgate",S.gate.hash); }catch(e){} }
+      closeModal(); then&&then();
+    }catch(e){ $("#g-err").textContent=e.message||"Prüfen fehlgeschlagen."; btn.disabled=false; btn.textContent="Öffnen"; }
+  };
+  $("#g-go").onclick=go; $("#g-form").onsubmit=e=>{ e.preventDefault(); go(); };
+  return d;
+}
+function familyCard(){
+  const st=personStats(), V=(st.mama?st.mama.value:0)+(st.daniel?st.daniel.value:0);
+  const row=p=>{ const k=st[p]; if(!k)return ""; const sh=V>0?k.value/V:0;
+    return `<div class="fam-r"><span class="fam-n"><i style="background:${PERSON_COL[p]}"></i>${PROFILE_LABEL[p]}</span><span class="num">${eur(k.value)}</span><span class="num muted hide-sm">${nfP1.format(sh)}</span><span class="num ${cls(k.profit)}">${eur(k.profit,true)}</span><span class="num ${cls(k.twr)}">${pct(k.twr)}</span></div>`; };
+  return `<section class="card fam" aria-label="Vergleich Mama und Daniel"><div class="card-h"><h2>Mama und Daniel im Vergleich</h2></div><div class="card-b">
+    <div class="fam-bar">${["mama","daniel"].map(p=>st[p]&&V>0?`<i style="width:${(st[p].value/V*100).toFixed(2)}%;background:${PERSON_COL[p]}" title="${PROFILE_LABEL[p]} ${nfP1.format(st[p].value/V)}"></i>`:"").join("")}</div>
+    <div class="fam-t"><div class="fam-r h"><span></span><span>Wert</span><span class="hide-sm">Anteil</span><span>Ergebnis</span><span>Rendite</span></div>${row("mama")}${row("daniel")}</div>
+    <p class="note" style="margin:10px 0 0">Rendite zeitgewichtet seit dem ersten Kauf. In den Positionen unten sind beide Depots zusammengefasst, bei den Brokern steht dabei, wem was gehört.</p></div></section>`;
+}
+
 /* ---------- Server ---------- */
 const ISIN_RE=/^[A-Z]{2}[A-Z0-9]{9}[0-9]$/;
 async function api(method,path,body){
   let r;
+  if(/^\/api\//.test(path)&&!/[?&]p=/.test(path)&&S.profile==="mama") path+=(path.includes("?")?"&":"?")+"p=mama";
   try{ r=await fetch(path,{method,headers:body?{"Content-Type":"application/json"}:{},body:body?JSON.stringify(body):undefined}); }
   catch(e){ throw new Error("Die Depot-App läuft nicht. Starte sie mit „Depot starten“."); }
   let j=null; try{ j=await r.json(); }catch(e){}
@@ -1392,9 +1544,11 @@ async function api(method,path,body){
 }
 async function load(){
   try{
-    const j=await api("GET","/api/state");
-    S.tx=(j.transactions||[]).map(t=>({...t,symbol:t.asset}));
-    S.assets=j.assets||{}; S.quotes=j.quotes||{}; S.bench=j.bench||null; S.logos=j.logos||{}; S.status=j.status||{}; S.rev=j.rev; S.offline=false; S.err=null;
+    const [j,jm]=await Promise.all([api("GET","/api/state?p=daniel"),api("GET","/api/state?p=mama")]);
+    S.raw.daniel={tx:(j.transactions||[]).map(t=>({...t,symbol:t.asset})),assets:j.assets||{}};
+    S.raw.mama=jm.profile==="mama"?{tx:(jm.transactions||[]).map(t=>({...t,symbol:t.asset})),assets:jm.assets||{}}:{tx:[],assets:{}};
+    S.dataVer++; applyProfile();
+    S.quotes=j.quotes||{}; S.bench=j.bench||null; S.logos=j.logos||{}; S.status=j.status||{}; S.rev=j.rev; S.offline=false; S.err=null;
   }catch(e){ S.offline=true; S.err="App nicht erreichbar"; }
   S.loaded={tx:true,assets:true,quotes:true};
   schedule(); renderRefreshBtn(); renderFoot();
@@ -1514,7 +1668,7 @@ async function snapDecrypt(f,key){
 
 /* ---------- Handy-Ansicht (nur lesen) ---------- */
 const SNAP=!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const BUILD="8bed3b737238";
+const BUILD="b8a5de47dbe5";
 // Ist die Seite älter als der Depotstand, einmal mit neuer Adresse laden (umgeht den Zwischenspeicher)
 function snapCheckBuild(obj){
   if(!obj||!obj.build||BUILD===obj.build||BUILD.indexOf("DEPOT_")>=0)return false;
@@ -1534,8 +1688,12 @@ async function snapFetch(){
 }
 function snapApply(obj){
   if(snapCheckBuild(obj))return;
-  S.tx=(obj.transactions||[]).map(t=>({...t,symbol:t.asset}));
-  S.assets=obj.assets||{}; S.quotes=obj.quotes||{}; S.bench=obj.bench||null; S.logos=obj.logos||{}; S.status=obj.status||{};
+  const dbs=obj.dbs||{daniel:{transactions:obj.transactions,assets:obj.assets}};
+  for(const p of ["daniel","mama"]){ const d=dbs[p]||{}; S.raw[p]={tx:(d.transactions||[]).map(t=>({...t,symbol:t.asset})),assets:d.assets||{}}; }
+  S.gate=obj.danielGate||null; S.dataVer++;
+  if(S.profile==="daniel"&&!gateUnlocked()) S.profile=null;
+  applyProfile();
+  S.quotes=obj.quotes||{}; S.bench=obj.bench||null; S.logos=obj.logos||{}; S.status=obj.status||{};
   S.snapAt=obj.snapshotAt; S.offline=false; S.err=null; S.loaded={tx:true,assets:true,quotes:true};
   S.snapLoadedAt=Date.now();
   schedule(); renderFoot();
@@ -1577,7 +1735,7 @@ async function snapLoad(silent){
   try{ S.snapKey=key; snapApply(await snapDecrypt(SNAPFILE,key)); snapLive(false); }
   catch(e){ snapKeySet(null); S.snapKey=null; snapLockScreen(e.code==="badpw"?"Das Passwort wurde am Mac geändert. Bitte neu eingeben.":e.message); }
 }
-function snapLock(){ snapKeySet(null); S.snapKey=null; S.tx=[]; S.assets={}; S.quotes={}; S.bench=null; snapLockScreen(); renderFoot(); }
+function snapLock(){ snapKeySet(null); S.snapKey=null; S.tx=[]; S.assets={}; S.quotes={}; S.bench=null; S.raw={daniel:{tx:[],assets:{}},mama:{tx:[],assets:{}}}; S.profile=null; S.gateOk=null; try{ localStorage.removeItem("depot.dgate"); sessionStorage.removeItem("depot.profile"); }catch(e){} renderProfileBar(); snapLockScreen(); renderFoot(); }
 
 /* ---------- Handy: Kurse direkt bei onvista holen ---------- */
 const OVB="https://api.onvista.de/api/v1";
@@ -1671,6 +1829,13 @@ async function openSyncDialog(){
     ${st.lastError?`<p class="err">${esc(st.lastError)}</p>`:""}
     ${st.pagesNote?`<p class="pill warn" style="white-space:normal;border-radius:8px;padding:10px 12px">${esc(st.pagesNote)}</p>`:""}
     <p class="note">Der Mac lädt den verschlüsselten Stand nach jedem Kursabruf und nach jeder Änderung hoch, sobald er wach ist und die App läuft. GitHub braucht danach bis zu ein paar Minuten, bis das Handy den neuen Stand sieht.</p>
+    <div class="sum" style="flex-direction:column;align-items:stretch;gap:10px">
+      <span class="eyebrow">Passwort für Daniel</span>
+      <span class="muted" style="font-size:13.5px">${st.danielGate?"Gesetzt. Am Handy fragt die Ansicht „Daniel“ zusätzlich danach.":"Noch nicht gesetzt. Bis dahin ist Daniels Ansicht am Handy gesperrt."} Mama und Familie öffnen sich mit dem normalen Passwort. Die Familienansicht zeigt auch Daniels Positionen.</span>
+      <div class="form-grid"><div class="field"><label for="dg-pw">${st.danielGate?"Neues Passwort":"Passwort"}</label><input id="dg-pw" type="password" autocomplete="new-password" spellcheck="false"></div>
+      <div class="field"><label for="dg-pw2">Wiederholen</label><input id="dg-pw2" type="password" autocomplete="new-password" spellcheck="false"></div></div>
+      <div><button class="btn small" type="button" id="dg-save">Passwort für Daniel speichern</button></div>
+    </div>
     <details id="sy-more"><summary class="muted" style="cursor:pointer">Passwort oder Token ändern, ausschalten</summary>
       <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px">${syncFormFields(st,true)}</div>
     </details>`:`
@@ -1686,6 +1851,12 @@ async function openSyncDialog(){
   </div>
   <footer>${setUp?`<button class="btn danger" type="button" id="sy-off">Ausschalten</button><button class="btn" type="button" id="sy-now">Jetzt hochladen</button><button class="btn primary" type="button" id="sy-save" hidden>Änderungen speichern</button>`:`<button class="btn" data-close type="button">Abbrechen</button><button class="btn primary" type="button" id="sy-save">Speichern und hochladen</button>`}</footer>`,true);
   const $=s=>d.querySelector(s), err=$("#sy-err");
+  if($("#dg-save")) $("#dg-save").onclick=async()=>{
+    err.textContent=""; const a=$("#dg-pw").value, b=$("#dg-pw2").value;
+    if(a.length<6) return err.textContent="Das Passwort für Daniel braucht mindestens 6 Zeichen.";
+    if(a!==b) return err.textContent="Die beiden Passwörter stimmen nicht überein.";
+    try{ await api("POST","/api/sync/daniel",{password:a}); toast("Passwort für Daniel gespeichert. Wird hochgeladen …"); closeModal(); setTimeout(openSyncDialog,4500); }catch(e){ err.textContent=apiMsg(e); }
+  };
   if($("#sy-copy")) $("#sy-copy").onclick=async()=>{ try{ await navigator.clipboard.writeText(st.url); toast("Adresse kopiert"); }catch(e){ toast("Adresse markieren und kopieren"); } };
   if($("#sy-gen")) $("#sy-gen").onclick=()=>{ const p=genPassphrase(); $("#sy-pw").value=p; $("#sy-pw2").value=p; $("#sy-pw").type="text"; $("#sy-pwnote").hidden=false; };
   if($("#sy-more")) $("#sy-more").addEventListener("toggle",()=>{ $("#sy-save").hidden=!$("#sy-more").open; });
@@ -1764,6 +1935,7 @@ function renderOverviewMobile(v){
   const income=(k.divs||0)+(k.interest||0)+(k.staking||0);
   const top=open.slice(0,7), rest=open.slice(7), restShare=rest.reduce((s,p)=>s+p.share,0);
   v.innerHTML=`<div class="m-stack">
+  ${S.profile==="family"?familyCard():""}
   <section class="card m-chart" aria-label="Gesamtentwicklung">
     <div class="m-modes" id="seg-mode">${[["pct","Rendite"],["eur","Gewinn"],["value","Depotwert"]].map(([m,l])=>`<button type="button" data-m="${m}" aria-pressed="${S.mode===m}">${l}</button>`).join("")}</div>
     <div class="chart-head" id="chart-head"></div>
@@ -1919,6 +2091,7 @@ function showModal(html,wide){
 
 function openTx(tx,presetId){
   if(SNAP)return;
+  if(!S.profile||S.profile==="family"){ toast(S.profile?"In der Familienansicht wird nichts eingetragen. Wähle oben Mama oder Daniel.":"Wähle zuerst ein Depot."); return; }
   if(S.offline){ toast("Die Depot-App läuft nicht. Starte sie mit „Depot starten“."); return; }
   const edit=!!tx; const lastBroker=(S.tx.slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0))[0]||{}).broker||"";
   const t=tx||{type:"buy",date:localToday(),symbol:presetId||"",qty:"",price:"",fee:"",tax:"",broker:lastBroker,note:""};
@@ -2218,6 +2391,7 @@ document.addEventListener("keydown",e=>{
 });
 let rz=0; window.addEventListener("resize",()=>{ clearTimeout(rz); rz=setTimeout(()=>{ if(S.view==="overview"&&!isMobile())drawMainChart(); else render(); },120); });
 if(window.matchMedia) window.matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",schedule);
+try{ const sp=sessionStorage.getItem("depot.profile"); if(PROFILE_LABEL[sp]&&(sp!=="daniel"||!SNAP)) S.profile=sp; }catch(e){}
 if(SNAP){
   document.body.classList.add("snap");
   document.addEventListener("visibilitychange",()=>{ if(!document.hidden&&S.snapKey&&Date.now()-(S.liveAt||S.snapLoadedAt||0)>15*60e3) snapLoad(true); });
