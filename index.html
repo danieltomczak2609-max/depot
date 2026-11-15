@@ -303,26 +303,14 @@ body.picking .brand .eyebrow{display:none}
 body.picking #h-sub{font-size:20px;font-weight:650;color:var(--ink)}
 body.picking #h-sub .muted{color:var(--ink)}
 .picker{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:8px}
-.pick{display:flex;flex-direction:column;gap:18px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px;cursor:pointer;transition:transform .12s,border-color .12s;min-width:0;color:inherit;font:inherit}
+.pick{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px;cursor:pointer;transition:transform .12s,border-color .12s;min-width:0}
 .pick:hover{border-color:var(--accent);transform:translateY(-2px)}
 .pick:active{transform:scale(.99)}
-.pick-head{display:flex;align-items:center;gap:14px;min-width:0}
-.pick-av{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:16px;flex:none}
-.pick-t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.pick-av{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:16px;margin-bottom:6px}
 .pick-n{font-size:20px;font-weight:700}
+.pick-v{font-family:var(--f-num);font-size:26px;letter-spacing:-.03em}
 .pick-s{font-size:13px;color:var(--muted)}
-.pick-b{display:flex;flex-direction:column;background:var(--surface-2);border-radius:12px;padding:6px 14px;margin-top:auto}
-.pick-row{display:flex;justify-content:space-between;gap:12px;padding:7px 0;font-size:14px;color:var(--muted)}
-.pick-row .num{font-family:var(--f-num);color:var(--ink);font-size:16px;letter-spacing:-.02em}
-.pick-row.tot{border-top:1px solid var(--line);color:var(--ink);font-weight:650}
-.pick-row.tot .num{font-size:19px;font-weight:600}
-.pick-hide{color:var(--muted);font-size:14px;padding:14px;justify-content:center;flex:1;align-items:center;text-align:center}
-@media (min-width:1100px){
-  .picker{grid-template-columns:1fr;max-width:980px}
-  .pick{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,380px);align-items:center;gap:24px}
-  .pick-b{margin-top:0}
-  .pick-hide{min-height:112px}
-}
+.pick-c{font-size:13px;color:var(--ink);margin-top:6px;padding-top:8px;border-top:1px solid var(--line);align-self:stretch}
 .fam-bar{display:flex;height:12px;border-radius:6px;overflow:hidden;gap:2px;background:var(--surface-2);margin-bottom:14px}
 .fam-bar i{display:block;height:100%}
 .fam-t{display:flex;flex-direction:column}
@@ -335,9 +323,11 @@ body.picking #h-sub .muted{color:var(--ink)}
 @media (max-width:640px){
   .pbar{display:flex;width:100%;margin:0 0 4px}.pbar[hidden]{display:none}.pbar button{flex:1;padding:8px 6px}
   .picker{grid-template-columns:1fr;gap:10px}
-  .pick{padding:16px;gap:12px}
-  .pick-n{font-size:17px}
-  .pick-hide{padding:10px}
+  .pick{display:grid;grid-template-columns:48px minmax(0,1fr) auto;grid-template-rows:auto auto;column-gap:14px;row-gap:2px;align-items:center;padding:16px}
+  .pick-av{grid-row:1 / span 2;margin:0}
+  .pick-n{font-size:17px}.pick-v{font-size:19px;grid-column:3;grid-row:1;text-align:right}
+  .pick-s{grid-column:2 / span 2;grid-row:2}
+  .pick-c{grid-column:2 / span 2;grid-row:3;margin-top:4px;padding-top:6px}
   .fam-r{grid-template-columns:minmax(64px,1fr) repeat(3,auto);font-size:13px;gap:8px}
   .fam-r .hide-sm{display:none}
 }
@@ -1502,18 +1492,15 @@ function renderPicker(){
   if(!allLoaded()){ v.innerHTML='<div class="card"><div class="empty">Depots werden geladen …</div></div>'; return; }
   const st=personStats(), locked=SNAP&&!gateUnlocked();
   const fam=(st.mama?st.mama.value:0)+(st.daniel?st.daniel.value:0);
-  const brk=rows=>`<span class="pick-b">${rows.map(([l,v,b])=>`<span class="pick-row${b?" tot":""}"><span>${l}</span><span class="num">${v}</span></span>`).join("")}</span>`;
-  const tile=(p,sub,body)=>`<button type="button" class="pick" data-p="${p}">
-      <span class="pick-head"><span class="pick-av" style="background:${p==="family"?"linear-gradient(135deg,var(--c-etf),var(--accent))":PERSON_COL[p]}">${p==="family"?"M+D":PROFILE_LABEL[p][0]}</span>
-      <span class="pick-t"><span class="pick-n">${PROFILE_LABEL[p]}</span><span class="pick-s">${sub}</span></span></span>
-      ${body}</button>`;
-  const money=(assets,cash)=>brk([["Assets",eur(assets)],["Liquide Mittel",cash?eur(cash):"–"],["Gesamt",eur(assets+(cash||0)),true]]);
-  const mk=st.mama, dk=st.daniel;
-  const fc=(mk&&mk.cash||0)+(dk&&dk.cash||0);
+  const tile=(p,k,sub,extra)=>`<button type="button" class="pick" data-p="${p}">
+      <span class="pick-av" style="background:${p==="family"?"linear-gradient(135deg,var(--c-etf),var(--accent))":PERSON_COL[p]}">${p==="family"?"M+D":PROFILE_LABEL[p][0]}</span>
+      <span class="pick-n">${PROFILE_LABEL[p]}</span>
+      <span class="pick-v">${k}</span>
+      <span class="pick-s">${sub}</span>${extra||""}</button>`;
+  const one=(p)=>{ const k=st[p]; if(p==="daniel") return tile(p,locked?"🔒":"","Beträge erst nach dem Öffnen"); return tile(p,k?eur0(k.value):"–",k?`<span class="${cls(k.profit)}">${eur(k.profit,true)}</span> · ${pct(k.twr)}`:"noch leer",k&&k.cash?`<span class="pick-c">+ ${eur0(k.cash)} liquide Mittel</span>`:""); };
   v.innerHTML=`<section class="picker" aria-label="Depot wählen">
-    ${tile("mama",mk?`<span class="${cls(mk.profit)}">${eur(mk.profit,true)}</span> · ${pct(mk.twr)}`:"noch leer",mk?money(mk.value,mk.cash):"")}
-    ${tile("daniel",locked?"🔒 eigenes Passwort":"",`<span class="pick-b pick-hide">Beträge erst nach dem Öffnen</span>`)}
-    ${tile("family","beide Depots zusammen",money(fam,fc))}
+    ${one("mama")}${one("daniel")}
+    ${(()=>{ const fc=(st.mama&&st.mama.cash||0)+(st.daniel&&st.daniel.cash||0); return tile("family",eur0(fam),"beide Depots zusammen",fc?`<span class="pick-c">+ ${eur0(fc)} liquide Mittel</span>`:""); })()}
   </section>`;
   v.querySelectorAll(".pick").forEach(x=>x.onclick=()=>switchProfile(x.dataset.p));
 }
@@ -1743,7 +1730,7 @@ async function snapDecrypt(f,key){
 
 /* ---------- Handy-Ansicht (nur lesen) ---------- */
 const SNAP=!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const BUILD="56c6187f4599";
+const BUILD="2abfa59c3077";
 // Ist die Seite älter als der Depotstand, einmal mit neuer Adresse laden (umgeht den Zwischenspeicher)
 function snapCheckBuild(obj){
   if(!obj||!obj.build||BUILD===obj.build||BUILD.indexOf("DEPOT_")>=0)return false;
