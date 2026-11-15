@@ -307,7 +307,9 @@ body.picking #h-sub .muted{color:var(--ink)}
 .pick:hover{border-color:var(--accent);transform:translateY(-2px)}
 .pick:active{transform:scale(.99)}
 .pick-l{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0}
-.pick-av{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:16px;margin-bottom:6px}
+.pick-av{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:16px;margin-bottom:6px;overflow:hidden;flex:none}
+.pick-av.img{background:none}
+.pick-av.wide{width:132px}
 .pick-n{font-size:20px;font-weight:700}
 .pick-v{font-family:var(--f-num);font-size:26px;letter-spacing:-.03em}
 .pick-s{font-size:13px;color:var(--muted)}
@@ -330,6 +332,7 @@ body.picking #h-sub .muted{color:var(--ink)}
   .ppick{grid-template-columns:1fr;gap:10px}
   .pick{padding:16px;gap:12px}
   .pick-av{width:40px;height:40px;border-radius:12px;font-size:14px;margin-bottom:2px}
+  .pick-av.wide{width:110px}
   .pick-n{font-size:17px}.pick-v{font-size:21px}
   .pick-r{font-size:12.5px}
   .pick-r .pr>span:first-child{padding-right:10px}
@@ -1439,6 +1442,12 @@ function topItem(p){ return `<div class="it"><span>${esc(p.asset.name||p.symbol)
 /* ---------- Profile: Mama, Daniel, Familie ---------- */
 const PROFILE_LABEL={mama:"Mama",daniel:"Daniel",family:"Familie"};
 const PERSON_COL={mama:"var(--c-etf)",daniel:"var(--accent)"};
+/* Profilbilder: Mama Prinzessin (Krone), Familie Tomczak-Logo */
+const AVATAR={
+  mama:`<svg viewBox="0 0 48 48" width="100%" height="100%" aria-hidden="true"><defs><linearGradient id="av-m" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F7A6C9"/><stop offset="1" stop-color="#B36BD9"/></linearGradient></defs><rect width="48" height="48" rx="14" fill="url(#av-m)"/><g transform="translate(24 26) scale(1.32) translate(-24 -24)"><circle cx="24" cy="28" r="9.5" fill="#FFE3D3"/><path d="M14.5 27c0-7 4.3-11 9.5-11s9.5 4 9.5 11c-2.2-3.6-5.6-5.2-9.5-5.2S16.7 23.4 14.5 27z" fill="#8A4B2E"/><path d="M15.5 15.5l3.4 3.2L24 12l5.1 6.7 3.4-3.2-1.6 7.3H17.1z" fill="#FFD45A" stroke="#E9A825" stroke-width=".8" stroke-linejoin="round"/><circle cx="24" cy="12" r="1.6" fill="#FF6FA8"/><circle cx="15.5" cy="15.5" r="1.2" fill="#7FD8FF"/><circle cx="32.5" cy="15.5" r="1.2" fill="#7FD8FF"/><circle cx="20.6" cy="28.6" r="1.1" fill="#3A2A2A"/><circle cx="27.4" cy="28.6" r="1.1" fill="#3A2A2A"/><path d="M21.4 32.2c1.6 1.3 3.6 1.3 5.2 0" stroke="#C0566F" stroke-width="1.2" fill="none" stroke-linecap="round"/><circle cx="19" cy="31.2" r="1.4" fill="#FF9EB5" opacity=".6"/><circle cx="29" cy="31.2" r="1.4" fill="#FF9EB5" opacity=".6"/></g></svg>`,
+  family:`<svg viewBox="0 0 132 48" width="100%" height="100%" aria-hidden="true"><defs><linearGradient id="av-f" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1F3B57"/><stop offset="1" stop-color="#2C5F8A"/></linearGradient></defs><rect width="132" height="48" rx="14" fill="url(#av-f)"/><g transform="translate(9 9)"><path d="M15 0l13 5v10c0 8-5.6 13.6-13 15C7.6 28.6 2 23 2 15V5z" fill="none" stroke="#E8C27A" stroke-width="1.8"/><path d="M8.5 8.5h13M15 8.5v14" stroke="#E8C27A" stroke-width="2.6" stroke-linecap="round"/></g><text x="44" y="29.5" textLength="78" lengthAdjust="spacingAndGlyphs" font-family="Georgia,'Times New Roman',serif" font-size="14" font-weight="700" fill="#F3E6C8">TOMCZAK</text></svg>`
+};
+function avatarHtml(p){ return AVATAR[p]||(p==="family"?"M+D":PROFILE_LABEL[p][0]); }
 S.raw={daniel:{tx:[],assets:{},cash:{}},mama:{tx:[],assets:{},cash:{}}}; S.cash={}; S.profile=null; S.gate=null; S.dataVer=0;
 function profTx(p){ return (S.raw[p]&&S.raw[p].tx)||[]; }
 function gateUnlocked(){
@@ -1502,13 +1511,13 @@ function renderPicker(){
       <span class="pr"><span>Liquide</span><span class="num">${c?eur0(c):"–"}</span></span>
       <span class="pr tot"><span>Gesamt</span><span class="num">${eur0(a+(c||0))}</span></span></span>`;
   const tile=(p,k,sub,right)=>`<button type="button" class="pick" data-p="${p}">
-      <span class="pick-l"><span class="pick-av" style="background:${p==="family"?"linear-gradient(135deg,var(--c-etf),var(--accent))":PERSON_COL[p]}">${p==="family"?"M+D":PROFILE_LABEL[p][0]}</span>
+      <span class="pick-l"><span class="pick-av${AVATAR[p]?" img":""}${p==="family"?" wide":""}" style="${AVATAR[p]?"":"background:"+PERSON_COL[p]}">${avatarHtml(p)}</span>
       <span class="pick-n">${PROFILE_LABEL[p]}</span>
       ${k?`<span class="pick-v">${k}</span>`:""}
       <span class="pick-s">${sub}</span></span>${right||""}</button>`;
   const mk=st.mama, fc=(st.mama&&st.mama.cash||0)+(st.daniel&&st.daniel.cash||0);
   v.innerHTML=`<section class="ppick" aria-label="Depot wählen">
-    ${tile("mama",mk?eur0(mk.value):"–",mk?`<span class="${cls(mk.profit)}">${eur(mk.profit,true)}</span> · ${pct(mk.twr)}`:"noch leer",mk?brk(mk.value,mk.cash):"")}
+    ${tile("mama",mk?eur0(mk.value):"–",mk?`<span class="${cls(mk.profit)}">${eur(mk.profit,true)}</span> · <span class="${cls(mk.twr)}">${pct(mk.twr)}</span>`:"noch leer",mk?brk(mk.value,mk.cash):"")}
     ${tile("daniel",locked?"🔒":"","Beträge erst nach dem Öffnen","")}
     ${tile("family",eur0(fam),"beide Depots zusammen",brk(fam,fc))}
   </section>`;
@@ -1740,7 +1749,7 @@ async function snapDecrypt(f,key){
 
 /* ---------- Handy-Ansicht (nur lesen) ---------- */
 const SNAP=!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const BUILD="140304cf4487";
+const BUILD="54ba29cd7497";
 // Ist die Seite älter als der Depotstand, einmal mit neuer Adresse laden (umgeht den Zwischenspeicher)
 function snapCheckBuild(obj){
   if(!obj||!obj.build||BUILD===obj.build||BUILD.indexOf("DEPOT_")>=0)return false;
