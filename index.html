@@ -847,7 +847,8 @@ function renderBanner(){
   const b=document.getElementById("banner"), out=[];
   if(SNAP){ b.innerHTML=""; return; }
   if(S.offline){ b.innerHTML=`<div class="banner"><span><b>Die Depot-App läuft gerade nicht.</b> Starte sie mit „Depot starten“ im Ordner Portfolio. Die Seite verbindet sich danach von selbst.</span></div>`; return; }
-  const errs=(S.status.errors||[]).filter(e=>S.assets[e.asset]);
+  // nur für Positionen, die noch im Depot sind; geschlossene brauchen keinen aktuellen Kurs
+  const errs=(S.status.errors||[]).filter(e=>S.assets[e.asset]&&M&&M.pos[e.asset]&&M.pos[e.asset].qty>1e-9);
   if(errs.length) out.push(`<span><b>Kein Kurs für ${errs.map(e=>esc((S.assets[e.asset]||{}).ticker||e.ticker)).join(", ")}.</b> ${errs.length===1?esc(errs[0].error)+". ":""}Prüf die Internetverbindung oder wähl per Klick auf die Position eine andere Börse.</span>`);
   const noSrc=Object.entries(S.assets).filter(([id,a])=>!a.ovId&&!(S.quotes[id]&&S.quotes[id].priceEur)&&M.pos[id]&&M.pos[id].qty>0);
   if(noSrc.length) out.push(`<span><b>Ohne Kursquelle:</b> ${noSrc.map(([,a])=>esc(a.ticker)).join(", ")}. Setz den Kurs per Klick auf die Position von Hand oder wähl eine Börse.</span>`);
@@ -1777,7 +1778,7 @@ async function snapDecrypt(f,key){
 
 /* ---------- Handy-Ansicht (nur lesen) ---------- */
 const SNAP=!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const BUILD="8a99b3154878";
+const BUILD="0c60bd648cce";
 // Ist die Seite älter als der Depotstand, einmal mit neuer Adresse laden (umgeht den Zwischenspeicher)
 function snapCheckBuild(obj){
   if(!obj||!obj.build||BUILD===obj.build||BUILD.indexOf("DEPOT_")>=0)return false;
