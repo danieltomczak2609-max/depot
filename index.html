@@ -1479,6 +1479,11 @@ function gateUnlocked(){
   if(S.gateOk===S.gate.hash)return true;
   try{ return localStorage.getItem("depot.dgate")===S.gate.hash; }catch(e){ return false; }
 }
+function gateRemembered(){
+  if(!SNAP)return true; // lokale App am Mac: Daniels Zahlen immer sichtbar
+  if(!S.gate)return false;
+  try{ return localStorage.getItem("depot.dgate")===S.gate.hash; }catch(e){ return false; }
+}
 function applyProfile(){
   const p=S.profile||"daniel";
   if(p==="family"){
@@ -1547,7 +1552,8 @@ function renderPicker(){
   const mk=st.mama, fc=(st.mama&&st.mama.cash||0)+(st.daniel&&st.daniel.cash||0);
   v.innerHTML=`<section class="ppick" aria-label="Depot wählen">
     ${tile("mama",mk?eur0(mk.value):"–",mk?`<span class="${cls(mk.profit)}">${eur(mk.profit,true)}</span> · <span class="${cls(mk.twr)}">${pct(mk.twr)}</span>`:"noch leer",mk?brk(mk.value,mk.cash):"")}
-    ${tile("daniel",locked?"🔒":"","Beträge erst nach dem Öffnen","")}
+    ${(()=>{ const dk=st.daniel; if(gateRemembered()&&dk) return tile("daniel",eur0(dk.value),`<span class="${cls(dk.profit)}">${eur(dk.profit,true)}</span> · <span class="${cls(dk.twr)}">${pct(dk.twr)}</span>`,brk(dk.value,dk.cash));
+      return tile("daniel",locked?"🔒":"","Beträge erst nach dem Öffnen",""); })()}
     ${tile("family",eur0(fam),"beide Depots zusammen",brk(fam,fc))}
   </section>`;
   v.querySelectorAll(".pick").forEach(x=>x.onclick=()=>switchProfile(x.dataset.p));
@@ -1778,7 +1784,7 @@ async function snapDecrypt(f,key){
 
 /* ---------- Handy-Ansicht (nur lesen) ---------- */
 const SNAP=!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const BUILD="0c60bd648cce";
+const BUILD="b0b837ecd183";
 // Ist die Seite älter als der Depotstand, einmal mit neuer Adresse laden (umgeht den Zwischenspeicher)
 function snapCheckBuild(obj){
   if(!obj||!obj.build||BUILD===obj.build||BUILD.indexOf("DEPOT_")>=0)return false;
