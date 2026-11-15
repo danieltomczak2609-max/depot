@@ -347,6 +347,19 @@ body.picking #h-sub .muted{color:var(--ink)}
 .cash-r .l small{font-size:12px;color:var(--muted)}
 .cash-r .num{font-family:var(--f-num);font-size:17px;letter-spacing:-.02em;text-align:right}
 body.snap .cash-r,body.ro .cash-r{grid-template-columns:minmax(0,1fr) auto}
+.pb-back{display:none}
+.h-mix{display:none}
+@media (max-width:640px){
+  .pbar .pb-back{display:block;flex:0 0 auto;font-size:22px;line-height:1;padding:4px 14px 6px;color:var(--ink)}
+  .h-mix:not(:empty){display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;width:100%}
+  .h-mix .hm{display:flex;flex-direction:column;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .h-mix .hm small{font-size:12px;color:var(--muted);font-weight:600}
+  .h-mix .hm b{font-family:var(--f-num);font-weight:500;font-size:18px;letter-spacing:-.03em;white-space:nowrap}
+  .h-mix .hm.tot{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+  .h-mix .hm.tot b{font-weight:600}
+  .cash .note,.cash-r .l small{display:none}
+  .cash-r{padding:9px 0}
+}
 .pill.info{background:var(--accent-soft);color:var(--accent)}
 .srcline{font-size:12px;color:var(--muted)}
 .pill.flat{background:var(--surface-2);color:var(--muted)}
@@ -519,6 +532,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--line);border-bottom:0}
       <span class="eyebrow">Depotwert</span>
       <div class="total" id="h-total">–</div>
       <div class="subline" id="h-sub"><span class="muted">Daten werden geladen …</span></div>
+      <div class="h-mix" id="h-mix"></div>
     </div>
     <div class="actions">
       <button class="btn edit-only" id="btn-refresh" type="button">Kurse aktualisieren</button>
@@ -810,7 +824,14 @@ function render(){
   const v=document.getElementById("view");
   if(S.view==="journal")renderJournal(v); else if(S.view==="analysis")renderAnalysis(v); else renderOverview(v);
 }
+function renderHeaderMix(){
+  const x=document.getElementById("h-mix"); if(!x)return;
+  const cs=S.profile&&M?cashState():null;
+  if(!cs||!cs.rows.length){ x.innerHTML=""; return; }
+  x.innerHTML=`<span class="hm"><small>Liquide Mittel</small><b>${eur(cs.total)}</b></span><span class="hm tot"><small>Gesamtwert</small><b>${eur(M.k.value+cs.total)}</b></span>`;
+}
 function renderHeader(){
+  renderHeaderMix();
   const {k}=M, el=document.getElementById("h-sub");
   document.getElementById("h-total").textContent=allLoaded()||S.err?eur(k.value):"–";
   if(S.err){ el.innerHTML=`<span class="pill warn">${esc(S.err)}</span>`; return; }
@@ -1444,9 +1465,9 @@ const PROFILE_LABEL={mama:"Mama",daniel:"Daniel",family:"Familie"};
 const PERSON_COL={mama:"var(--c-etf)",daniel:"var(--accent)"};
 /* Profilbilder: Mama Prinzessin (Krone), Familie Tomczak-Logo */
 const AVATAR={
-  mama:`<svg viewBox="0 0 48 48" width="100%" height="100%" aria-hidden="true"><defs><linearGradient id="av-m" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F7A6C9"/><stop offset="1" stop-color="#B36BD9"/></linearGradient></defs><rect width="48" height="48" rx="14" fill="url(#av-m)"/><g transform="translate(24 26) scale(1.32) translate(-24 -24)"><circle cx="24" cy="28" r="9.5" fill="#FFE3D3"/><path d="M14.5 27c0-7 4.3-11 9.5-11s9.5 4 9.5 11c-2.2-3.6-5.6-5.2-9.5-5.2S16.7 23.4 14.5 27z" fill="#8A4B2E"/><path d="M15.5 15.5l3.4 3.2L24 12l5.1 6.7 3.4-3.2-1.6 7.3H17.1z" fill="#FFD45A" stroke="#E9A825" stroke-width=".8" stroke-linejoin="round"/><circle cx="24" cy="12" r="1.6" fill="#FF6FA8"/><circle cx="15.5" cy="15.5" r="1.2" fill="#7FD8FF"/><circle cx="32.5" cy="15.5" r="1.2" fill="#7FD8FF"/><circle cx="20.6" cy="28.6" r="1.1" fill="#3A2A2A"/><circle cx="27.4" cy="28.6" r="1.1" fill="#3A2A2A"/><path d="M21.4 32.2c1.6 1.3 3.6 1.3 5.2 0" stroke="#C0566F" stroke-width="1.2" fill="none" stroke-linecap="round"/><circle cx="19" cy="31.2" r="1.4" fill="#FF9EB5" opacity=".6"/><circle cx="29" cy="31.2" r="1.4" fill="#FF9EB5" opacity=".6"/></g></svg>`,
-  daniel:`<svg viewBox="0 0 48 48" width="100%" height="100%" aria-hidden="true"><defs><linearGradient id="av-d" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1B2A4A"/><stop offset="1" stop-color="#0B1222"/></linearGradient><radialGradient id="av-dg" cx=".5" cy=".42" r=".5"><stop offset="0" stop-color="#3FE0D0" stop-opacity=".35"/><stop offset="1" stop-color="#3FE0D0" stop-opacity="0"/></radialGradient></defs><rect width="48" height="48" rx="14" fill="url(#av-d)"/><circle cx="24" cy="20" r="16" fill="url(#av-dg)"/><circle cx="37" cy="10" r=".7" fill="#9FB4D9"/><circle cx="9" cy="14" r=".6" fill="#9FB4D9"/><circle cx="40" cy="22" r=".5" fill="#9FB4D9"/><path d="M6 48c1.5-8.5 6-13.5 11-15.5l7 4 7-4c5 2 9.5 7 11 15.5z" fill="#121A2E"/><path d="M10 48c1.4-6.4 4.6-10.6 8.6-12.6L24 38.6l5.4-3.2c4 2 7.2 6.2 8.6 12.6z" fill="#1E2B4A"/><path d="M24 7.5c-7.4 0-12 6-12 13.2 0 5.4 2.6 10.2 6.4 12.8L24 37l5.6-3.5c3.8-2.6 6.4-7.4 6.4-12.8C36 13.5 31.4 7.5 24 7.5z" fill="#162240"/><path d="M24 12c-5 0-8.2 4.3-8.2 9.4 0 4.4 2.2 8.2 5.4 10.1L24 33.2l2.8-1.7c3.2-1.9 5.4-5.7 5.4-10.1C32.2 16.3 29 12 24 12z" fill="#05080F"/><path d="M17.8 21.4c1.6-1.3 3.6-1.6 5-1.1l-.6 1.9c-1.4-.2-2.9 0-4.4.6zM30.2 21.4c-1.6-1.3-3.6-1.6-5-1.1l.6 1.9c1.4-.2 2.9 0 4.4.6z" fill="#3FE0D0"/><path d="M21 40.5l3-1.8 3 1.8-3 3.6z" fill="#3FE0D0" opacity=".85"/></svg>`,
-  family:`<svg viewBox="0 0 132 48" width="100%" height="100%" aria-hidden="true"><defs><linearGradient id="av-f" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1F3B57"/><stop offset="1" stop-color="#2C5F8A"/></linearGradient></defs><rect width="132" height="48" rx="14" fill="url(#av-f)"/><g transform="translate(9 9)"><path d="M15 0l13 5v10c0 8-5.6 13.6-13 15C7.6 28.6 2 23 2 15V5z" fill="none" stroke="#E8C27A" stroke-width="1.8"/><path d="M8.5 8.5h13M15 8.5v14" stroke="#E8C27A" stroke-width="2.6" stroke-linecap="round"/></g><text x="44" y="29.5" textLength="78" lengthAdjust="spacingAndGlyphs" font-family="Georgia,'Times New Roman',serif" font-size="14" font-weight="700" fill="#F3E6C8">TOMCZAK</text></svg>`
+  daniel:`<svg viewBox="0 0 96 96" width="100%" height="100%" aria-hidden="true"><defs> <radialGradient id="dn-bg" cx=".5" cy=".3" r=".85"><stop offset="0" stop-color="#3A0F17"/><stop offset=".55" stop-color="#12070C"/><stop offset="1" stop-color="#050507"/></radialGradient> <radialGradient id="dn-glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FF2D45" stop-opacity=".55"/><stop offset="1" stop-color="#FF2D45" stop-opacity="0"/></radialGradient> <linearGradient id="dn-rim" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF4A5E" stop-opacity=".9"/><stop offset=".5" stop-color="#FF4A5E" stop-opacity=".05"/><stop offset="1" stop-color="#7A8BB8" stop-opacity=".5"/></linearGradient> <linearGradient id="dn-cloak" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1A1D27"/><stop offset="1" stop-color="#07080C"/></linearGradient> <filter id="dn-blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.6"/></filter> <clipPath id="dn-clip"><rect width="96" height="96" rx="28"/></clipPath> </defs> <g clip-path="url(#dn-clip)"><rect width="96" height="96" rx="28" fill="url(#dn-bg)"/><line x1="14" y1="6" x2="9" y2="22" stroke="#9AA6C8" stroke-width=".6" opacity="0.18"/><line x1="30" y1="-4" x2="25" y2="12" stroke="#9AA6C8" stroke-width=".6" opacity="0.12"/><line x1="70" y1="8" x2="65" y2="24" stroke="#9AA6C8" stroke-width=".6" opacity="0.16"/><line x1="86" y1="24" x2="81" y2="40" stroke="#9AA6C8" stroke-width=".6" opacity="0.14"/><line x1="22" y1="40" x2="17" y2="56" stroke="#9AA6C8" stroke-width=".6" opacity="0.1"/><line x1="80" y1="52" x2="75" y2="68" stroke="#9AA6C8" stroke-width=".6" opacity="0.12"/><line x1="60" y1="-2" x2="55" y2="14" stroke="#9AA6C8" stroke-width=".6" opacity="0.1"/><line x1="8" y1="62" x2="3" y2="78" stroke="#9AA6C8" stroke-width=".6" opacity="0.1"/> <ellipse cx="48" cy="40" rx="30" ry="26" fill="url(#dn-glow)"/> <path d="M4 96 C10 76 24 66 38 63 L48 72 L58 63 C72 66 86 76 92 96 Z" fill="url(#dn-cloak)"/> <path d="M22 74 L36 54 L42 72 L48 80 L54 72 L60 54 L74 74 L60 70 L48 84 L36 70 Z" fill="#11131B" stroke="#3B1219" stroke-width=".8"/> <path d="M48 9 C30 13 21 29 21 46 C21 60 29 71 48 79 C67 71 75 60 75 46 C75 29 66 13 48 9 Z" fill="url(#dn-cloak)"/> <path d="M48 9 C30 13 21 29 21 46 C21 60 29 71 48 79" fill="none" stroke="url(#dn-rim)" stroke-width="1.4"/> <path d="M48 9 C66 13 75 29 75 46 C75 60 67 71 48 79" fill="none" stroke="#7A8BB8" stroke-width=".7" opacity=".35"/> <path d="M48 24 C37 25 31 35 31 46 C31 57 38 65 48 70 C58 65 65 57 65 46 C65 35 59 25 48 24 Z" fill="#020204"/> <path d="M33 49 C38 46 58 46 63 49 L62 55 C57 52.5 39 52.5 34 55 Z" fill="#0A0B10"/> <g filter="url(#dn-blur)" opacity=".9"><path d="M35.5 44.5 L45 47.5 L44 50 L36.5 48 Z M60.5 44.5 L51 47.5 L52 50 L59.5 48 Z" fill="#FF2D45"/></g> <path d="M35.5 44.5 L45 47.5 L44 50 L36.5 48 Z M60.5 44.5 L51 47.5 L52 50 L59.5 48 Z" fill="#FF6A7A"/> <path d="M37.5 45.6 L43.6 47.6 M58.5 45.6 L52.4 47.6" stroke="#FFE1E5" stroke-width=".7" stroke-linecap="round"/> <path d="M48 84 L44 89 L48 95 L52 89 Z" fill="#C21F33" opacity=".9"/></g> </svg>`,
+  mama:`<svg viewBox="0 0 96 96" width="100%" height="100%" aria-hidden="true"><defs> <linearGradient id="pm-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5B2A6E"/><stop offset=".55" stop-color="#9C4F86"/><stop offset="1" stop-color="#E8A3B5"/></linearGradient> <linearGradient id="pm-gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FBEFC2"/><stop offset=".45" stop-color="#E2B656"/><stop offset=".7" stop-color="#B8862F"/><stop offset="1" stop-color="#F3D88A"/></linearGradient> <linearGradient id="pm-hair" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6B3A22"/><stop offset="1" stop-color="#3E1F12"/></linearGradient> <radialGradient id="pm-skin" cx=".45" cy=".4" r=".7"><stop offset="0" stop-color="#FFEDE2"/><stop offset="1" stop-color="#F2C9B4"/></radialGradient> <linearGradient id="pm-dress" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F7D3E2"/><stop offset="1" stop-color="#D99AC2"/></linearGradient> <clipPath id="pm-clip"><ellipse cx="48" cy="50" rx="29" ry="33"/></clipPath> </defs> <rect width="96" height="96" rx="28" fill="url(#pm-bg)"/> <g opacity=".55" fill="#FFF4D6"><path d="M15 18 l1.2 3 3 1.2 -3 1.2 -1.2 3 -1.2 -3 -3 -1.2 3 -1.2z"/><path d="M80 14 l.9 2.2 2.2.9 -2.2.9 -.9 2.2 -.9 -2.2 -2.2 -.9 2.2 -.9z"/><path d="M83 74 l.8 2 2 .8 -2 .8 -.8 2 -.8 -2 -2 -.8 2 -.8z"/></g> <ellipse cx="48" cy="50" rx="31.5" ry="35.5" fill="url(#pm-gold)"/> <ellipse cx="48" cy="50" rx="29" ry="33" fill="#FCF1EA"/> <g clip-path="url(#pm-clip)"> <path d="M28 90 C30 74 38 68 48 68 C58 68 66 74 68 90 Z" fill="url(#pm-dress)"/> <path d="M40 70 C44 74 52 74 56 70" stroke="url(#pm-gold)" stroke-width="1.4" fill="none"/> <rect x="44.5" y="58" width="7" height="11" rx="3" fill="#F2C9B4"/> <path d="M48 22 C35 22 29 32 29 44 C29 58 31 70 27 80 C33 78 37 73 38 66 L38 46 Z" fill="url(#pm-hair)"/> <path d="M48 22 C61 22 67 32 67 44 C67 58 65 70 69 80 C63 78 59 73 58 66 L58 46 Z" fill="url(#pm-hair)"/> <ellipse cx="48" cy="46" rx="11" ry="13.5" fill="url(#pm-skin)"/> <path d="M37 42 C38 32 43 29 48 29 C55 29 59 33 60 41 C55 36 49 34 41 37 Z" fill="url(#pm-hair)"/> <path d="M41.5 46.5 c1.6 1.3 3.4 1.3 5 0 M49.5 46.5 c1.6 1.3 3.4 1.3 5 0" stroke="#4A2A22" stroke-width="1.1" fill="none" stroke-linecap="round"/> <path d="M45.5 53.6 c1.6 1 3.4 1 5 0" stroke="#C4566F" stroke-width="1.2" fill="none" stroke-linecap="round"/> <ellipse cx="42" cy="51" rx="2" ry="1.2" fill="#F29BB0" opacity=".45"/><ellipse cx="54" cy="51" rx="2" ry="1.2" fill="#F29BB0" opacity=".45"/> </g> <path d="M36 31.5 L39.5 24 L43.5 29 L48 19.5 L52.5 29 L56.5 24 L60 31.5 C52 29 44 29 36 31.5 Z" fill="url(#pm-gold)" stroke="#9A6B22" stroke-width=".5"/> <circle cx="48" cy="24.5" r="2.1" fill="#FF5F9E" stroke="#FFF" stroke-width=".5"/><circle cx="39.6" cy="27.2" r="1.1" fill="#8FD8FF"/><circle cx="56.4" cy="27.2" r="1.1" fill="#8FD8FF"/> </svg>`,
+  family:`<svg viewBox="0 0 264 96" width="100%" height="100%" aria-hidden="true"><defs> <linearGradient id="tf-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0B1626"/><stop offset=".6" stop-color="#132A45"/><stop offset="1" stop-color="#1D3E63"/></linearGradient> <linearGradient id="tf-gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FBEFC2"/><stop offset=".45" stop-color="#E2B656"/><stop offset=".7" stop-color="#B8862F"/><stop offset="1" stop-color="#F3D88A"/></linearGradient> <radialGradient id="tf-in" cx=".5" cy=".4" r=".6"><stop offset="0" stop-color="#1F426A"/><stop offset="1" stop-color="#0C1B2E"/></radialGradient> </defs> <rect width="264" height="96" rx="28" fill="url(#tf-bg)"/> <rect x="4.5" y="4.5" width="255" height="87" rx="24" fill="none" stroke="url(#tf-gold)" stroke-width="1" opacity=".55"/> <circle cx="48" cy="48" r="31" fill="url(#tf-in)" stroke="url(#tf-gold)" stroke-width="2.2"/> <circle cx="48" cy="48" r="27.5" fill="none" stroke="url(#tf-gold)" stroke-width=".6" opacity=".7"/> <g fill="url(#tf-gold)" opacity=".95"><ellipse cx="33.84" cy="66.12" rx="1.9" ry="4.6" transform="rotate(243.0 33.84 66.12)"/><ellipse cx="29.08" cy="61.08" rx="1.9" ry="4.6" transform="rotate(260.3 29.08 61.08)"/><ellipse cx="26.04" cy="54.85" rx="1.9" ry="4.6" transform="rotate(277.7 26.04 54.85)"/><ellipse cx="25.00" cy="48.00" rx="1.9" ry="4.6" transform="rotate(295.0 25.00 48.00)"/><ellipse cx="26.04" cy="41.15" rx="1.9" ry="4.6" transform="rotate(312.3 26.04 41.15)"/><ellipse cx="29.08" cy="34.92" rx="1.9" ry="4.6" transform="rotate(329.7 29.08 34.92)"/><ellipse cx="33.84" cy="29.88" rx="1.9" ry="4.6" transform="rotate(347.0 33.84 29.88)"/><ellipse cx="62.16" cy="66.12" rx="1.9" ry="4.6" transform="rotate(-63.0 62.16 66.12)"/><ellipse cx="66.92" cy="61.08" rx="1.9" ry="4.6" transform="rotate(-80.3 66.92 61.08)"/><ellipse cx="69.96" cy="54.85" rx="1.9" ry="4.6" transform="rotate(-97.7 69.96 54.85)"/><ellipse cx="71.00" cy="48.00" rx="1.9" ry="4.6" transform="rotate(-115.0 71.00 48.00)"/><ellipse cx="69.96" cy="41.15" rx="1.9" ry="4.6" transform="rotate(-132.3 69.96 41.15)"/><ellipse cx="66.92" cy="34.92" rx="1.9" ry="4.6" transform="rotate(-149.7 66.92 34.92)"/><ellipse cx="62.16" cy="29.88" rx="1.9" ry="4.6" transform="rotate(-167.0 62.16 29.88)"/></g> <path transform="translate(48 49.5) scale(.86) translate(-48 -49.5)" d="M35 33 H61 L62 40 H59.5 C58.8 37.2 57.4 36.4 54.6 36.4 H51.6 V61.5 C51.6 63.4 52.6 64 55 64.3 V66 H41 V64.3 C43.4 64 44.4 63.4 44.4 61.5 V36.4 H41.4 C38.6 36.4 37.2 37.2 36.5 40 H34 Z" fill="url(#tf-gold)"/> <text x="92" y="38" font-family="Georgia,'Times New Roman',serif" font-size="11" letter-spacing="5.5" fill="#E2B656" opacity=".85">FAMILIE</text> <text x="91" y="67" textLength="156" lengthAdjust="spacingAndGlyphs" font-family="Didot,'Bodoni 72',Georgia,'Times New Roman',serif" font-size="29" font-weight="700" fill="url(#tf-gold)">TOMCZAK</text> <path d="M92 77 H247" stroke="url(#tf-gold)" stroke-width="1" opacity=".6"/> </svg>`
 };
 function avatarHtml(p){ return AVATAR[p]||(p==="family"?"M+D":PROFILE_LABEL[p][0]); }
 S.raw={daniel:{tx:[],assets:{},cash:{}},mama:{tx:[],assets:{},cash:{}}}; S.cash={}; S.profile=null; S.gate=null; S.dataVer=0;
@@ -1475,8 +1496,13 @@ function renderProfileBar(){
   const b=document.getElementById("pbar"); if(!b)return;
   if(!S.profile){ b.innerHTML=""; b.hidden=true; return; }
   b.hidden=false;
-  b.innerHTML=["mama","daniel","family"].map(p=>`<button type="button" data-p="${p}" aria-pressed="${S.profile===p}">${p==="daniel"&&SNAP&&!gateUnlocked()?'<span aria-hidden="true">🔒</span> ':""}${PROFILE_LABEL[p]}</button>`).join("");
-  b.querySelectorAll("button").forEach(x=>x.onclick=()=>switchProfile(x.dataset.p));
+  b.innerHTML=`<button type="button" class="pb-back" aria-label="Zurück zur Auswahl">‹</button>`+["mama","daniel","family"].map(p=>`<button type="button" data-p="${p}" aria-pressed="${S.profile===p}">${p==="daniel"&&SNAP&&!gateUnlocked()?'<span aria-hidden="true">🔒</span> ':""}${PROFILE_LABEL[p]}</button>`).join("");
+  b.querySelectorAll("button[data-p]").forEach(x=>x.onclick=()=>switchProfile(x.dataset.p));
+  b.querySelector(".pb-back").onclick=backToPicker;
+}
+function backToPicker(){
+  S.profile=null; try{ sessionStorage.removeItem("depot.profile"); }catch(e){}
+  applyProfile(); render(); window.scrollTo(0,0);
 }
 function switchProfile(p){
   if(!PROFILE_LABEL[p])return;
@@ -1502,6 +1528,7 @@ function renderPicker(){
   document.body.classList.add("picking");
   document.getElementById("h-total").textContent="–";
   document.getElementById("h-sub").innerHTML='<span class="muted">Wessen Depot möchtest du sehen?</span>';
+  const hm=document.getElementById("h-mix"); if(hm) hm.innerHTML="";
   renderProfileBar();
   const v=document.getElementById("view");
   if(!allLoaded()){ v.innerHTML='<div class="card"><div class="empty">Depots werden geladen …</div></div>'; return; }
@@ -1750,7 +1777,7 @@ async function snapDecrypt(f,key){
 
 /* ---------- Handy-Ansicht (nur lesen) ---------- */
 const SNAP=!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const BUILD="275dd95fb08d";
+const BUILD="8a99b3154878";
 // Ist die Seite älter als der Depotstand, einmal mit neuer Adresse laden (umgeht den Zwischenspeicher)
 function snapCheckBuild(obj){
   if(!obj||!obj.build||BUILD===obj.build||BUILD.indexOf("DEPOT_")>=0)return false;
