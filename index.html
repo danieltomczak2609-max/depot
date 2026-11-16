@@ -421,10 +421,19 @@ body.picking #h-sub .muted{color:var(--ink)}
   .csel::-webkit-scrollbar{display:none}
   .ch{flex:0 0 80%;scroll-snap-align:center}
   .hud-v{font-size:22px}
-  .stage.turn{margin:0 -16px;border-radius:0;border-left:0;border-right:0;padding-bottom:18px}
-  .stage.turn .stage-row{display:block;height:calc(min(54vh,450px) + 200px);padding:0}
-  .stage.turn .fg{position:absolute;left:50%;bottom:0;width:78vw;max-width:none;transform-origin:50% 100%}
-  .stage.turn .fg-body{height:min(54vh,450px);filter:none;margin-top:10px}
+  html:has(body.picking),body.picking{height:100%;overflow:hidden;overscroll-behavior:none}
+  body.picking .wrap{height:100dvh;min-height:0;gap:8px;padding-bottom:max(8px,env(safe-area-inset-bottom,0px));box-sizing:border-box;overflow:hidden}
+  body.picking #view{flex:1;min-height:0;display:flex;flex-direction:column}
+  body.picking #foot{flex:none;font-size:11px}
+  .stage.turn{flex:1;min-height:0;display:flex;flex-direction:column;margin:0 calc(-1 * max(14px,env(safe-area-inset-left,0px)));border-radius:0;border-left:0;border-right:0;padding-bottom:10px;touch-action:none}
+  .stage.turn .stage-row{display:block;flex:1;min-height:0;height:auto;padding:0}
+  .stage.turn .fg{position:absolute;left:50%;top:8px;bottom:0;width:78vw;max-width:none;transform-origin:50% 100%;justify-content:flex-end}
+  .stage.turn .fg-body{flex:1;min-height:0;height:auto;filter:none;margin-top:8px}
+  .stage.turn .ch-hud{flex:none;padding:8px 14px}
+  .stage.turn .hud-v{font-size:21px}
+  .stage.turn .hud-m{gap:8px;margin-top:3px}
+  .stage.turn .fg.sel .ch-hud,.stage.turn .fg.sel .fg-body{transform:none}
+  body.picking .csel-go{flex:none;margin:8px 0 0}
   .stage.turn .fg .ch-hud{opacity:0;transition:opacity .3s}
   .stage.turn .fg.front .ch-hud{opacity:1}
   .csel-go #cs-prev,.csel-go #cs-next{display:block}
@@ -1685,7 +1694,7 @@ function renderPicker(){
     els.forEach((el,i)=>{ el.classList.toggle("sel",ORDER[i]===S.pickSel);
       if(!T){ el.style.transform=""; el.style.zIndex=""; el.style.filter=""; el.style.opacity=""; return; }
       const th=((i-(cur<0?1:cur))*120+drag)*Math.PI/180, z=Math.cos(th), x=Math.sin(th), k=(z+1)/2;
-      el.style.transform=`translate(-50%,0) translateX(${(x*40).toFixed(2)}vw) translateY(${(-(1-k)*11).toFixed(2)}%) scale(${(.4+.6*k).toFixed(3)})`;
+      el.style.transform=`translate(-50%,0) translateX(${(x*40).toFixed(2)}vw) scale(${(.4+.6*k).toFixed(3)})`;
       el.style.zIndex=String(Math.round(k*10)); el.style.filter=`brightness(${(.35+.65*k).toFixed(2)}) saturate(${(.5+.5*k).toFixed(2)})`; el.style.opacity=(.4+.6*k).toFixed(2); el.classList.toggle("front",k>.9); });
     go.disabled=!S.pickSel; go.textContent=S.pickSel?`${S.pickSel==="family"?"Familien-Depot":"Depot von "+PROFILE_LABEL[S.pickSel]} öffnen ▶`:"Wähle einen Charakter";
   };
@@ -1926,7 +1935,7 @@ async function snapDecrypt(f,key){
 
 /* ---------- Handy-Ansicht (nur lesen) ---------- */
 const SNAP=!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const BUILD="ac1f9c748b3a";
+const BUILD="df70711d2b40";
 // Ist die Seite älter als der Depotstand, einmal mit neuer Adresse laden (umgeht den Zwischenspeicher)
 function snapCheckBuild(obj){
   if(!obj||!obj.build||BUILD===obj.build||BUILD.indexOf("DEPOT_")>=0)return false;
