@@ -356,6 +356,20 @@ body.picking #h-sub .muted{color:var(--ink)}
 .csel-go{gap:10px;align-items:center}
 .csel-go #cs-prev,.csel-go #cs-next{display:none;width:46px;height:46px;padding:0;font-size:24px;border-radius:50%}
 @media (prefers-reduced-motion:reduce){.fg-sway,.fg-img,.fg-aura{animation:none}}
+@media (min-width:641px){
+  body.picking .wrap{max-width:none;min-height:100vh;padding-top:22px;padding-bottom:24px}
+  body.picking #view{flex:1;display:flex;flex-direction:column}
+  body.picking .stage{flex:1;display:flex;flex-direction:column;justify-content:flex-end;min-height:calc(100vh - 210px)}
+  body.picking .stage-row{flex:1;align-items:flex-end;gap:4%;padding:22px 5% 0}
+  body.picking .fg{max-width:30%}
+  body.picking .fg-body{height:calc(100vh - 430px);min-height:380px;max-height:1100px}
+  body.picking .ch-hud{padding:16px 24px}
+  body.picking .hud-v{font-size:34px}
+  body.picking .hud-n{font-size:13px}
+  body.picking .hud-s{font-size:15px}
+  body.picking .hud-m{font-size:13px;gap:16px}
+  body.picking .csel-go{margin:16px 0 0}
+}
 .pick-body{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:end;padding:18px 22px 22px}
 .pick-cover{display:block;height:230px;position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
 .pick-cover img{width:100%;height:100%;object-fit:cover;object-position:50% 18%;display:block;transition:transform .4s}
@@ -1912,7 +1926,7 @@ async function snapDecrypt(f,key){
 
 /* ---------- Handy-Ansicht (nur lesen) ---------- */
 const SNAP=!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const BUILD="1a2119fd88ee";
+const BUILD="ac1f9c748b3a";
 // Ist die Seite älter als der Depotstand, einmal mit neuer Adresse laden (umgeht den Zwischenspeicher)
 function snapCheckBuild(obj){
   if(!obj||!obj.build||BUILD===obj.build||BUILD.indexOf("DEPOT_")>=0)return false;
