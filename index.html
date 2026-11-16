@@ -328,6 +328,14 @@ body.picking #h-sub .muted{color:var(--ink)}
 .csel-go{display:flex;justify-content:center;margin:18px 0 4px}
 .csel-go .btn{font-size:16px;padding:12px 28px;border-radius:999px}
 .csel-go .btn[disabled]{opacity:.55;cursor:default}
+.fg-pos{position:absolute;left:50%;bottom:0;display:block;pointer-events:none}
+.fg-pos .fg-img{width:100%;height:100%;max-width:none;max-height:none}
+.fg-body,.fg-sway{overflow:visible}
+.fg-mama .fg-aura{background:radial-gradient(ellipse at 50% 100%,rgba(255,96,190,.45),transparent 65%)}
+.fg-family .fg-aura{background:radial-gradient(ellipse at 35% 100%,rgba(233,180,76,.4),transparent 60%),radial-gradient(ellipse at 68% 100%,rgba(255,96,190,.4),transparent 60%)}
+.stage .fg-mama.sel .fg-ring{background:radial-gradient(ellipse at center,rgba(255,96,190,.55),rgba(255,96,190,.12) 55%,transparent 72%);box-shadow:0 0 0 1px rgba(255,96,190,.5) inset}
+.stage .fg-mama.sel .ch-hud,.stage .fg-mama.sel .ch-hud:after{border-color:#FF6EC4}
+@media (min-width:641px){.stage-row .fg-family{flex-grow:1.3;max-width:36%}}
 .stage{--ink:#E5ECF2;--muted:#8E9BA8;--line:#283442;color:#E5ECF2;position:relative;margin-top:4px;padding:0 0 26px;border-radius:22px;overflow:hidden;background:radial-gradient(ellipse 70% 55% at 50% 100%,rgba(233,180,76,.16),transparent 70%),radial-gradient(ellipse 120% 80% at 50% 0,#1a2433 0,#0b1017 70%);border:1px solid var(--line);user-select:none;-webkit-user-select:none}
 .stage-floor{position:absolute;left:-10%;right:-10%;bottom:0;height:24%;background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(0,0,0,.35));border-top:1px solid rgba(233,180,76,.25);border-radius:50% 50% 0 0/40px 40px 0 0}
 .stage-row{position:relative;display:flex;justify-content:center;align-items:flex-end;gap:2%;padding:18px 3% 0}
@@ -428,6 +436,7 @@ body.picking #h-sub .muted{color:var(--ink)}
   .stage.turn{flex:1;min-height:0;display:flex;flex-direction:column;margin:0 calc(-1 * max(14px,env(safe-area-inset-left,0px)));border-radius:0;border-left:0;border-right:0;padding-bottom:10px;touch-action:none}
   .stage.turn .stage-row{display:block;flex:1;min-height:0;height:auto;padding:0}
   .stage.turn .fg{position:absolute;left:50%;top:8px;bottom:0;width:78vw;max-width:none;transform-origin:50% 100%;justify-content:flex-end}
+  .stage.turn .fg-family{width:96vw}
   .stage.turn .fg-body{flex:1;min-height:0;height:auto;filter:none;margin-top:8px}
   .stage.turn .ch-hud{flex:none;padding:8px 14px}
   .stage.turn .hud-v{font-size:21px}
@@ -1675,7 +1684,10 @@ function renderPicker(){
   if(v.querySelector(".stage")&&v.dataset.sig===sig) return;
   v.dataset.sig=sig;
   const ORDER=["mama","daniel","family"];
-  const fig=p=>{ const u=(S.avatars||{})[p]; if(u&&/^data:image\//.test(u)) return `<img class="fg-img" src="${u}" alt="" draggable="false">`; return AVATAR[p]?`<span class="fg-svg">${AVATAR[p]}</span>`:`<span class="fg-svg">${p==="family"?"M+D":PROFILE_LABEL[p][0]}</span>`; };
+  const FIGBOX={"daniel": {"t": 0.1212, "b": 0.9338, "ar": 0.8336}, "mama": {"t": 0.0743, "b": 0.9508, "ar": 0.79}, "family": {"t": 0.0588, "b": 0.9279, "ar": 1.0564}};
+  const fig=p=>{ const u=(S.avatars||{})[p]; const bx=FIGBOX[p];
+    if(u&&/^data:image\/webp/.test(u)&&bx){ const k=1/(bx.b-bx.t); return `<span class="fg-pos" style="height:${(k*100).toFixed(2)}%;aspect-ratio:${bx.ar};transform:translate(-50%,${((1-bx.b)*100).toFixed(2)}%)"><img class="fg-img" src="${u}" alt="" draggable="false"></span>`; }
+    if(u&&/^data:image\//.test(u)) return `<img class="fg-img" src="${u}" alt="" draggable="false">`; return AVATAR[p]?`<span class="fg-svg">${AVATAR[p]}</span>`:`<span class="fg-svg">${p==="family"?"M+D":PROFILE_LABEL[p][0]}</span>`; };
   const mini=(a,c)=>`<span class="hud-m"><span>Assets <b class="num">${eur0(a)}</b></span><span>Liquide <b class="num">${c?eur0(c):"–"}</b></span><span>Gesamt <b class="num">${eur0(a+(c||0))}</b></span></span>`;
   const pl=k=>`<span class="${cls(k.profit)}">${eur(k.profit,true)}</span> · <span class="${cls(k.twr)}">${pct(k.twr)}</span>`;
   const hud={ mama: mk?[eur0(mk.value),pl(mk),mini(mk.value,mk.cash)]:["–","noch leer",""],
@@ -1936,7 +1948,7 @@ async function snapDecrypt(f,key){
 
 /* ---------- Handy-Ansicht (nur lesen) ---------- */
 const SNAP=!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const BUILD="820e5ec790ec";
+const BUILD="115b27c47e2b";
 // Ist die Seite älter als der Depotstand, einmal mit neuer Adresse laden (umgeht den Zwischenspeicher)
 function snapCheckBuild(obj){
   if(!obj||!obj.build||BUILD===obj.build||BUILD.indexOf("DEPOT_")>=0)return false;
