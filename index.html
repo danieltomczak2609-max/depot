@@ -182,6 +182,8 @@ body.snap .top .actions{display:none}
 .m-ic.sell{background:var(--warn-soft);color:var(--warn)}
 .m-ic.dividend{background:var(--gain-soft);color:var(--gain)}
 .m-ic.interest{background:color-mix(in srgb,var(--c-etf) 18%,var(--surface));color:var(--c-etf)}
+.m-ic.taxrefund,.type.taxrefund{background:var(--gain-soft);color:var(--gain)}
+.seg-type button[aria-pressed="true"].taxrefund{background:var(--gain);color:var(--surface);border-color:var(--gain)}
 @media (max-width:640px){
   .tabs{position:sticky;top:0;z-index:15;background:var(--bg);margin:0 calc(-1 * max(14px,env(safe-area-inset-left,0px)));padding:env(safe-area-inset-top,0px) max(14px,env(safe-area-inset-left,0px)) 0}
   .tab{flex:1;text-align:center;padding:12px 6px}
@@ -724,8 +726,10 @@ const CLS={
   stock:{label:"Aktie",v:"--c-stock"}, etf:{label:"ETF",v:"--c-etf"}, crypto:{label:"Krypto",v:"--c-crypto"},
   commodity:{label:"Rohstoff",v:"--c-commodity"}, index:{label:"Index",v:"--c-index"}, bond:{label:"Anleihe",v:"--c-bond"}, other:{label:"Sonstiges",v:"--c-other"}
 };
-const TYPE={buy:"Kauf",sell:"Verkauf",dividend:"Dividende",interest:"Zinsen",staking:"Staking",transfer:"Transfer"};
-const IS_INCOME=t=>t==="dividend"||t==="interest";
+const TYPE={buy:"Kauf",sell:"Verkauf",dividend:"Dividende",interest:"Zinsen",taxrefund:"Steuererstattung",staking:"Staking",transfer:"Transfer"};
+const IS_INCOME=t=>t==="dividend"||t==="interest"||t==="taxrefund";
+const NO_ASSET=t=>t==="interest"||t==="taxrefund";
+const NO_ASSET_NAME={interest:["Zinsen","Verrechnungskonto"],taxrefund:["Steuererstattung","Verrechnungskonto"]};
 const MONTHS=["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
 const nfE=new Intl.NumberFormat("de-DE",{style:"currency",currency:"EUR"});
 const nfE0=new Intl.NumberFormat("de-DE",{style:"currency",currency:"EUR",maximumFractionDigits:0});
@@ -761,11 +765,12 @@ function saveUi(){ try{ localStorage.setItem("depot.ui",JSON.stringify({view:S.v
 /* ---------- Berechnung ---------- */
 function compute(){
   const today=localToday();
-  const txs=S.tx.filter(t=>t&&t.date&&TYPE[t.type]&&(t.symbol||t.type==="interest")).slice().sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:(a.createdAt||0)-(b.createdAt||0));
+  const txs=S.tx.filter(t=>t&&t.date&&TYPE[t.type]&&(t.symbol||NO_ASSET(t.type))).slice().sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:(a.createdAt||0)-(b.createdAt||0));
   const pos={};
   const P=sym=>pos[sym]||(pos[sym]={symbol:sym,qty:0,cost:0,realized:0,soldCost:0,divs:0,staking:0,burn:0,fees:0,taxes:0,invested:0,brokers:{},lots:{},first:null,last:null,n:0});
-  let interest=0, intFees=0, intTaxes=0;
+  let interest=0, intFees=0, intTaxes=0, refund=0;
   for(const t of txs){
+    if(t.type==="taxrefund"){ refund+=(+t.amount||0)-(+t.fee||0); intFees+=+t.fee||0; continue; }
     if(t.type==="interest"){ interest+=(+t.amount||0)-(+t.fee||0)-(+t.tax||0); intFees+=+t.fee||0; intTaxes+=+t.tax||0; continue; }
     const p=P(t.symbol), q=+t.qty||0, pr=+t.price||0, fee=(+t.fee||0)+(+t.tax||0), b=t.broker||"–";
     p.n++; p.first=p.first||t.date; p.last=t.date; p.fees+=+t.fee||0; p.taxes+=+t.tax||0;
@@ -861,6 +866,7 @@ function compute(){
   k.staking=Object.values(pos).reduce((a,p)=>a+p.staking,0);
   k.fees=Object.values(pos).reduce((a,p)=>a+p.fees,0)+intFees;
   k.interest=interest;
+  k.refund=refund;
   k.taxes=Object.values(pos).reduce((a,p)=>a+p.taxes,0)+intTaxes;
   k.cost=Object.values(pos).reduce((a,p)=>a+p.cost,0);
   k.day=n>1?(series.value[n-1]-series.value[n-2]-series.flow[n-1]):0;
@@ -1047,7 +1053,8 @@ function renderOverview(v){
     ${k.staking?kpi("Erträge",eur(k.divs+k.staking),`Dividenden ${eur0(k.divs)} · Staking ${eur0(k.staking)}`):kpi("Dividenden",eur(k.divs),"netto")}
     ${kpi("Zinsen",eur(k.interest),"netto, vom Broker")}
     ${kpi("Gebühren",eur(k.fees),"alle Transaktionen")}
-    ${kpi("Steuern",eur(k.taxes),"alle Transaktionen")}
+    ${kpi("Steuern",eur(k.taxes),k.refund?"netto nach Erstattung "+eur(k.taxes-k.refund):"alle Transaktionen")}
+    ${k.refund?kpi("Steuererstattung",`<span class="pos">${eur(k.refund,true)}</span>`,"zurück aufs Verrechnungskonto"):""}
     ${(()=>{ const cs=cashState(); return cs.rows.length?kpi("Liquide Mittel",eur(cs.total),"zusammen mit Depot "+eur0(k.value+cs.total)):""; })()}
   </div>
   ${cashCard()}
@@ -1150,17 +1157,17 @@ function renderJTable(host){
     const a=S.assets[sid(t.symbol)]||{};
     if(S.f.type&&t.type!==S.f.type)return false;
     if(S.f.broker&&t.broker!==S.f.broker)return false;
-    if(S.f.cls&&(t.type==="interest"||(a.cls||"other")!==S.f.cls))return false;
-    if(q&&!((t.type==="interest"?"zinsen ":"")+(a.ticker||"")+" "+(a.isin||"")+" "+(a.name||"")+" "+(t.note||"")+" "+(t.broker||"")).toLowerCase().includes(q))return false;
+    if(S.f.cls&&(NO_ASSET(t.type)||(a.cls||"other")!==S.f.cls))return false;
+    if(q&&!((NO_ASSET(t.type)?TYPE[t.type].toLowerCase()+" ":"")+(a.ticker||"")+" "+(a.isin||"")+" "+(a.name||"")+" "+(t.note||"")+" "+(t.broker||"")).toLowerCase().includes(q))return false;
     return true;
   }).sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:(b.createdAt||0)-(a.createdAt||0));
   if(!rows.length){ host.innerHTML=`<div class="empty">${S.tx.length?"Keine Transaktion passt zu den Filtern.":"Noch keine Transaktionen. Leg mit „+ Transaktion“ los."}</div>`; return; }
-  let buy=0,sell=0,div=0,int=0,stk=0,fee=0,tax=0; rows.forEach(t=>{ const a=txAmount(t); if(t.type==="buy")buy+=a; else if(t.type==="sell")sell+=a; else if(t.type==="interest")int+=a; else if(t.type==="dividend")div+=a; else if(t.type==="staking")stk+=a; fee+=+t.fee||0; tax+=+t.tax||0; });
+  let buy=0,sell=0,div=0,int=0,ref=0,stk=0,fee=0,tax=0; rows.forEach(t=>{ const a=txAmount(t); if(t.type==="buy")buy+=a; else if(t.type==="sell")sell+=a; else if(t.type==="taxrefund")ref+=a; else if(t.type==="interest")int+=a; else if(t.type==="dividend")div+=a; else if(t.type==="staking")stk+=a; fee+=+t.fee||0; tax+=+t.tax||0; });
   host.innerHTML=`<table><thead><tr><th>Datum</th><th>Typ</th><th>Asset</th><th class="r">Stück</th><th class="r">Kurs</th><th class="r">Gebühr</th><th class="r">Steuer</th><th class="r">Betrag</th><th>Broker</th><th class="hide-sm">Notiz</th><th></th></tr></thead>
   <tbody>${rows.map(t=>{ const a=S.assets[sid(t.symbol)]||{}; return `<tr>
     <td class="num">${fmtDate(t.date)}</td>
     <td><span class="type ${t.type}">${TYPE[t.type]}</span></td>
-    <td>${t.type==="interest"?`<div class="asset"><span class="n">Zinsen</span><span class="t">Verrechnungskonto</span></div>`:`<div class="asset"><span class="n">${esc(a.name||t.symbol)}</span><span class="t">${esc(a.ticker||t.symbol)}</span></div>`}</td>
+    <td>${NO_ASSET(t.type)?`<div class="asset"><span class="n">${NO_ASSET_NAME[t.type][0]}</span><span class="t">${NO_ASSET_NAME[t.type][1]}</span></div>`:`<div class="asset"><span class="n">${esc(a.name||t.symbol)}</span><span class="t">${esc(a.ticker||t.symbol)}</span></div>`}</td>
     <td class="r num">${IS_INCOME(t.type)?"–":nfQ.format(+t.qty||0)}</td>
     <td class="r num">${IS_INCOME(t.type)||t.type==="transfer"?"–":priceFmt(+t.price)}</td>
     <td class="r num">${+t.fee?eur(+t.fee):"–"}</td>
@@ -1169,7 +1176,7 @@ function renderJTable(host){
     <td>${t.type==="transfer"?`${esc(t.broker||"–")} → ${esc(t.toBroker||"–")}`:esc(t.broker||"–")}</td>
     <td class="hide-sm muted" style="max-width:220px;overflow:hidden;text-overflow:ellipsis">${esc(t.note||"")}</td>
     <td><div class="row-actions edit-only"><button class="btn ghost small" data-edit="${esc(t.id)}" type="button">Bearbeiten</button><button class="btn ghost small danger" data-del="${esc(t.id)}" type="button">Löschen</button></div></td></tr>`;}).join("")}</tbody>
-  <tfoot><tr><td colspan="11" class="muted" style="font-weight:600;white-space:normal">${rows.length} Transaktionen · Käufe ${eur(buy)} · Verkäufe ${eur(sell)} · Dividenden ${eur(div)} · Zinsen ${eur(int)}${stk?` · Staking ${eur(stk)}`:""} · Gebühren ${eur(fee)} · Steuern ${eur(tax)}</td></tr></tfoot></table>`;
+  <tfoot><tr><td colspan="11" class="muted" style="font-weight:600;white-space:normal">${rows.length} Transaktionen · Käufe ${eur(buy)} · Verkäufe ${eur(sell)} · Dividenden ${eur(div)} · Zinsen ${eur(int)}${ref?` · Steuererstattung ${eur(ref)}`:""}${stk?` · Staking ${eur(stk)}`:""} · Gebühren ${eur(fee)} · Steuern ${eur(tax)}</td></tr></tfoot></table>`;
   host.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>openTx(S.tx.find(t=>t.id===b.dataset.edit)));
   host.querySelectorAll("[data-del]").forEach(b=>armDelete(b,()=>deleteTx(b.dataset.del)));
 }
@@ -1487,7 +1494,7 @@ function renderAnalysis(v){
   const fl=Object.entries(A.flows||{}).slice(-12); const maxF=Math.max(1,...fl.map(f=>Math.abs(f[1])));
   const staleList=open.filter(p=>p.stale);
   // Ergebnisbeitrag (alle Positionen, auch geschlossene)
-  const attr=Object.values(M.pos).map(p=>({p,t:p.total})).concat(M.k.interest?[{p:{asset:{name:"Zinsen"},symbol:"Zinsen",qty:1},t:M.k.interest,interest:true}]:[]).filter(x=>Math.abs(x.t)>0.005).sort((a,b)=>b.t-a.t);
+  const attr=Object.values(M.pos).map(p=>({p,t:p.total})).concat(M.k.interest?[{p:{asset:{name:"Zinsen"},symbol:"Zinsen",qty:1},t:M.k.interest,interest:true}]:[]).concat(M.k.refund?[{p:{asset:{name:"Steuererstattung"},symbol:"Steuererstattung",qty:1},t:M.k.refund,interest:true}]:[]).filter(x=>Math.abs(x.t)>0.005).sort((a,b)=>b.t-a.t);
   const maxAt=Math.max(1,...attr.map(x=>Math.abs(x.t))), sumAt=attr.reduce((s,x)=>s+x.t,0);
   // Korrelationsmatrix
   const cm=Q.withData||[], tick=p=>esc((p.asset.ticker||p.symbol).slice(0,8));
@@ -1809,7 +1816,7 @@ function familyCard(){
 function cashFlow(t){ const q=+t.qty||0, pr=+t.price||0, fee=+t.fee||0, tax=+t.tax||0;
   if(t.type==="buy")return -(q*pr+fee+tax);
   if(t.type==="sell")return q*pr-fee-tax;
-  if(t.type==="dividend"||t.type==="interest")return (+t.amount||0)-fee-tax;
+  if(t.type==="dividend"||t.type==="interest"||t.type==="taxrefund")return (+t.amount||0)-fee-tax;
   return -(fee+tax); }
 function cashState(cash,txs){
   cash=cash||S.cash||{}; txs=txs||S.tx;
@@ -1991,7 +1998,7 @@ async function snapDecrypt(f,key){
 
 /* ---------- Handy-Ansicht (nur lesen) ---------- */
 const SNAP=!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const BUILD="cddd0c463774";
+const BUILD="c691a53598c0";
 // Ist die Seite älter als der Depotstand, einmal mit neuer Adresse laden (umgeht den Zwischenspeicher)
 function snapCheckBuild(obj){
   if(!obj||!obj.build||BUILD===obj.build||BUILD.indexOf("DEPOT_")>=0)return false;
@@ -2255,7 +2262,7 @@ function renderOverviewMobile(v){
     if(sortKey==="name")return shortNm(a).localeCompare(shortNm(b),"de");
     return b.value-a.value; });
   const costTot=k.cost||1, shareMax=Math.max(0.0001,...open.map(p=>Math.max(p.share,p.cost/costTot)));
-  const income=(k.divs||0)+(k.interest||0)+(k.staking||0);
+  const income=(k.divs||0)+(k.interest||0)+(k.staking||0)+(k.refund||0);
   const top=open.slice(0,7), rest=open.slice(7), restShare=rest.reduce((s,p)=>s+p.share,0);
   v.innerHTML=`<div class="m-stack">
   ${S.profile==="family"?familyCard():""}
@@ -2269,7 +2276,7 @@ function renderOverviewMobile(v){
   <div class="m-tiles">
     <div class="m-tile"><span class="k">Unrealisiert</span><b class="${cls(k.unreal)}">${eur(k.unreal,true)}</b><span class="s">${k.cost>0?pct(k.unreal/k.cost):""} auf Einstand</span></div>
     <div class="m-tile"><span class="k">Realisiert</span><b class="${cls(k.realized)}">${eur(k.realized,true)}</b><span class="s">aus Verkäufen</span></div>
-    <div class="m-tile"><span class="k">Erträge</span><b class="${cls(income)}">${eur(income,true)}</b><span class="s">Dividenden ${eur0(k.divs)} · Zinsen ${eur0(k.interest)}${k.staking?` · Staking ${eur0(k.staking)}`:""}</span></div>
+    <div class="m-tile"><span class="k">Erträge</span><b class="${cls(income)}">${eur(income,true)}</b><span class="s">Dividenden ${eur0(k.divs)} · Zinsen ${eur0(k.interest)}${k.staking?` · Staking ${eur0(k.staking)}`:""}${k.refund?` · Steuererstattung ${eur0(k.refund)}`:""}</span></div>
     <div class="m-tile"><span class="k">Investiert</span><b>${eur0(k.invested)}</b><span class="s">netto eingezahlt</span></div>
     <div class="m-tile"><span class="k">Gebühren</span><b>${eur(k.fees)}</b><span class="s">alle Transaktionen</span></div>
     <div class="m-tile"><span class="k">Steuern</span><b>${eur(k.taxes)}</b><span class="s">alle Transaktionen</span></div>
@@ -2348,7 +2355,7 @@ function openAllocSheet(){
   draw();
 }
 
-const TX_ICON={buy:"＋",sell:"−",dividend:"%",interest:"€",staking:"✦",transfer:"⇄"};
+const TX_ICON={buy:"＋",sell:"−",dividend:"%",interest:"€",taxrefund:"§",staking:"✦",transfer:"⇄"};
 function txSigned(t){
   const fee=(+t.fee||0)+(+t.tax||0), a=txAmount(t);
   if(t.type==="buy")return -(a+fee);
@@ -2378,7 +2385,7 @@ function renderJListMobile(host){
     const a=S.assets[t.symbol]||{};
     if(S.f.type&&t.type!==S.f.type)return false;
     if(S.f.broker&&t.broker!==S.f.broker)return false;
-    if(q&&!((t.type==="interest"?"zinsen ":"")+(a.ticker||"")+" "+(a.isin||"")+" "+(a.name||"")+" "+(t.note||"")+" "+(t.broker||"")).toLowerCase().includes(q))return false;
+    if(q&&!((NO_ASSET(t.type)?TYPE[t.type].toLowerCase()+" ":"")+(a.ticker||"")+" "+(a.isin||"")+" "+(a.name||"")+" "+(t.note||"")+" "+(t.broker||"")).toLowerCase().includes(q))return false;
     return true;
   }).sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:(b.createdAt||0)-(a.createdAt||0));
   if(!rows.length){ host.innerHTML=`<div class="card"><div class="empty">${S.tx.length?"Keine Buchung passt zu Suche oder Filter.":"Noch keine Transaktionen."}</div></div>`; return; }
@@ -2393,7 +2400,7 @@ function renderJListMobile(host){
     ${Object.entries(groups).map(([mk,ts])=>{ const net=ts.reduce((s,t)=>s+txSigned(t),0);
       return `<section class="m-month"><div class="m-month-h"><span>${monthName(mk)}</span><span class="${cls(net)}">${eur(net,true)}</span></div>
       <div class="card m-txs">${ts.map(t=>{ const a=S.assets[t.symbol]||{}, s=txSigned(t), inc2=IS_INCOME(t.type);
-        const name=t.type==="interest"?"Zinsen":(a.name||t.symbol||"?").replace(/ \(ADR\)| Kurs in Euro.*$/g,"");
+        const name=NO_ASSET(t.type)?NO_ASSET_NAME[t.type][0]:(a.name||t.symbol||"?").replace(/ \(ADR\)| Kurs in Euro.*$/g,"");
         const detail=inc2?[TYPE[t.type],(+t.tax?"Steuer "+eur(+t.tax):""),t.broker].filter(Boolean).join(" · "):t.type==="transfer"?[TYPE[t.type],nfQ.format(+(+t.qty).toFixed(6))+" Stk.",(t.broker||"–")+" → "+(t.toBroker||"–"),+t.feeQty?"Gebühr "+nfQ.format(+t.feeQty)+" Stk.":""].filter(Boolean).join(" · "):[TYPE[t.type],nfQ.format(+(+t.qty).toFixed(4))+" × "+priceFmt(+t.price),t.broker].filter(Boolean).join(" · ");
         return `<button type="button" class="m-tx" data-id="${esc(t.id)}"><span class="m-ic ${t.type}">${TX_ICON[t.type]}</span>
           <span class="m-main"><span class="n">${esc(name)}</span><span class="t">${esc(detail)}</span>${t.note?`<span class="t note">${esc(t.note)}</span>`:""}</span>
@@ -2473,12 +2480,12 @@ function openTx(tx,presetId){
   };
   const sync=()=>{
     d.querySelectorAll("#tx-type button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.t===type)));
-    const inc=IS_INCOME(type), isInt=type==="interest";
+    const inc=IS_INCOME(type), isInt=NO_ASSET(type), isRef=type==="taxrefund";
     d.querySelectorAll("[data-qp]").forEach(e=>e.hidden=inc); d.querySelector("[data-amt]").hidden=!inc;
-    $("#tx-amount-l").textContent=isInt?"Zinsen brutto (€)":"Dividende brutto (€)";
-    $("#tx-assetf").hidden=isInt; $("#tx-inthint").hidden=!isInt; if(isInt)$("#tx-new").hidden=true; else if(chosen&&!chosen.existing)$("#tx-new").hidden=false;
+    $("#tx-amount-l").textContent=isRef?"Erstattung (€)":isInt?"Zinsen brutto (€)":"Dividende brutto (€)";
+    $("#tx-assetf").hidden=isInt; $("#tx-inthint").hidden=!isInt; $("#tx-inthint").textContent=isRef?"Erstattete Kapitalertragsteuer, z. B. durch Verlustverrechnung (Steuerausgleich) beim Broker. Gehört zu keiner Position, erhöht dein Ergebnis und deine Liquiden Mittel.":"Zinsen auf dein Verrechnungskonto beim Broker. Sie gehören zu keiner Position, zählen aber zu deinem Ergebnis."; if(isInt)$("#tx-new").hidden=true; else if(chosen&&!chosen.existing)$("#tx-new").hidden=false;
     const isTr=type==="transfer", isSt=type==="staking";
-    d.querySelectorAll("[data-tr]").forEach(e=>e.hidden=!isTr); d.querySelector("[data-px]").hidden=inc||isTr; $("#tx-taxf").hidden=isTr;
+    d.querySelectorAll("[data-tr]").forEach(e=>e.hidden=!isTr); d.querySelector("[data-px]").hidden=inc||isTr; $("#tx-taxf").hidden=isTr||isRef;
     $("#tx-qty-l").textContent=isTr?"Stück gesendet":isSt?"Stück erhalten":"Stück"; $("#tx-qty-h").hidden=!isTr;
     $("#tx-price-l").textContent=isSt?"Wert je Stück (€)":"Kurs je Stück (€)"; $("#tx-price-h").hidden=!isSt;
     $("#tx-fee-l").textContent=isTr?"Zusätzliche Gebühr (€)":"Gebühren (€)";
@@ -2489,7 +2496,7 @@ function openTx(tx,presetId){
     let total=NaN;
     if(type==="buy")total=q*pr+fee+tax; else if(type==="sell")total=q*pr-fee-tax; else if(isSt)total=q*(pr||0)-fee-tax; else if(!isTr) total=am-fee-tax;
     $("#tx-tax-h").textContent=type==="interest"?"Kapitalertragsteuer, Soli, Kirchensteuer":type==="dividend"?"Quellensteuer, Kapitalertragsteuer, Soli":type==="buy"?"meist 0, z. B. Finanztransaktionssteuer":"Kapitalertragsteuer, Soli, Kirchensteuer";
-    $("#tx-sum-l").textContent=type==="buy"?"Gesamtkosten inkl. Gebühren und Steuern":type==="sell"?"Erlös nach Gebühren und Steuern":type==="interest"?"Zinsen netto nach Steuern":isSt?"Wert der Rewards bei Erhalt":isTr?"Kommt an":"Dividende netto nach Steuern";
+    $("#tx-sum-l").textContent=type==="buy"?"Gesamtkosten inkl. Gebühren und Steuern":type==="sell"?"Erlös nach Gebühren und Steuern":type==="interest"?"Zinsen netto nach Steuern":isRef?"Erstattung":isSt?"Wert der Rewards bei Erhalt":isTr?"Kommt an":"Dividende netto nach Steuern";
     $("#tx-sum").textContent=isTr?(q>0?nfQ.format(+Math.max(0,q-fq).toFixed(10))+" Stück":"–"):isFinite(total)?eur(total):"–";
   };
   d.querySelectorAll("#tx-type button").forEach(b=>b.onclick=()=>{type=b.dataset.t;sync();});
@@ -2500,7 +2507,7 @@ function openTx(tx,presetId){
     const err=$("#tx-err"); err.textContent="";
     const date=$("#tx-date").value;
     const q=parseNum($("#tx-qty").value), pr=parseNum($("#tx-price").value), fee=parseNum($("#tx-fee").value)||0, tax=parseNum($("#tx-tax").value)||0, am=parseNum($("#tx-amount").value);
-    const isInt=type==="interest";
+    const isInt=NO_ASSET(type);
     if(!chosen&&!isInt)return err.textContent="Bitte zuerst ein Asset suchen und auswählen.";
     if(!date)return err.textContent="Bitte ein Datum wählen.";
     if(date<"1990-01-01"||date>localToday())return err.textContent=`Das Datum ${fmtDate(date)} wirkt falsch. Bitte Jahr prüfen.`;
@@ -2515,9 +2522,9 @@ function openTx(tx,presetId){
       if(!chosen.existing)return err.textContent="Für dieses Asset gibt es noch keinen Bestand.";
       const held=heldAt(chosen.id,date,tx&&tx.id,fromB); if(q>held+1e-9)return err.textContent=`Am ${fmtDate(date)} liegen bei ${fromB} nur ${nfQ.format(held)} Stück.`;
     }
-    else if(!(am>0))return err.textContent=isInt?"Bitte den Zinsbetrag eintragen.":"Bitte den Dividendenbetrag eintragen.";
+    else if(!(am>0))return err.textContent=type==="taxrefund"?"Bitte den erstatteten Betrag eintragen.":isInt?"Bitte den Zinsbetrag eintragen.":"Bitte den Dividendenbetrag eintragen.";
     if(fee<0)return err.textContent="Gebühren können nicht negativ sein.";
-    if(tax<0)return err.textContent="Steuern können nicht negativ sein. Eine Steuererstattung trägst du als Dividende ein.";
+    if(tax<0)return err.textContent="Steuern können nicht negativ sein. Eine Steuererstattung trägst du mit dem Typ „Steuererstattung“ ein.";
     if(type==="sell"&&!chosen.existing)return err.textContent="Für dieses Asset gibt es noch keinen Kauf.";
     if(type==="sell"){ const held=heldAt(chosen.id,date,tx&&tx.id); if(q>held+1e-9)return err.textContent=`Am ${fmtDate(date)} hältst du nur ${nfQ.format(held)} Stück.`; }
     let newAsset=null;
@@ -2528,7 +2535,7 @@ function openTx(tx,presetId){
       const r=chosen.r||{}; const typed=(chosen.text||"").toUpperCase();
       newAsset={ticker:tick,name,cls:$("#tx-cls").value,isin:r.isin||(ISIN_RE.test(typed)?typed:""),ovType:r.ovType||"",ovId:r.ovId||"",notation:r.notation||"",exchLabel:r.exchLabel||"",currency:r.currency||""};
     }
-    const body={assetId:isInt?null:(chosen.existing?chosen.id:null),newAsset:isInt?null:newAsset,tx:{id:tx?tx.id:undefined,createdAt:tx?tx.createdAt:undefined,date,type,qty:q,price:type==="transfer"?0:(pr||0),fee,tax:type==="transfer"?0:tax,amount:am,feeQty:type==="transfer"?fq:0,toBroker:type==="transfer"?toB:"",broker:fromB,note:$("#tx-note").value.trim()}};
+    const body={assetId:isInt?null:(chosen.existing?chosen.id:null),newAsset:isInt?null:newAsset,tx:{id:tx?tx.id:undefined,createdAt:tx?tx.createdAt:undefined,date,type,qty:q,price:type==="transfer"?0:(pr||0),fee,tax:type==="transfer"||type==="taxrefund"?0:tax,amount:am,feeQty:type==="transfer"?fq:0,toBroker:type==="transfer"?toB:"",broker:fromB,note:$("#tx-note").value.trim()}};
     const btn=$("#tx-save"); btn.disabled=true; btn.textContent="Speichert …";
     try{
       const r=await api("POST","/api/tx",body);
@@ -2683,7 +2690,7 @@ async function importCsv(file){
   const ci={date:col("datum","date"),type:col("typ","type"),ticker:col("ticker","symbol"),name:col("name"),cls:col("klasse","class"),isin:col("isin"),qty:col("stueck","stuck","anzahl","qty","menge"),price:col("kurs","preis","price"),amount:col("betrag","amount"),fee:col("gebuehr","fee"),tax:col("steuer","tax"),broker:col("broker","depot"),note:col("notiz","note")};
   if(ci.ticker<0)ci.ticker=ci.isin;
   if(ci.date<0||ci.type<0||ci.ticker<0){ toast("Gebraucht werden die Spalten Datum, Typ und Ticker oder ISIN."); return; }
-  const typeMap={kauf:"buy",buy:"buy",verkauf:"sell",sell:"sell",dividende:"dividend",dividend:"dividend",ausschuettung:"dividend",zinsen:"interest",zins:"interest",interest:"interest"};
+  const typeMap={kauf:"buy",buy:"buy",verkauf:"sell",sell:"sell",dividende:"dividend",dividend:"dividend",ausschuettung:"dividend",zinsen:"interest",zins:"interest",interest:"interest",steuererstattung:"taxrefund",taxrefund:"taxrefund"};
   const clsMap={}; Object.entries(CLS).forEach(([k,c])=>{ clsMap[c.label.toLowerCase()]=k; clsMap[k]=k; });
   const g=(r,i)=>i>=0?(r[i]||"").trim():"";
   const out=rows.slice(1).map(r=>{
@@ -2691,7 +2698,7 @@ async function importCsv(file){
     const type=typeMap[g(r,ci.type).toLowerCase().replace(/ü/g,"ue")]||"";
     const isin=g(r,ci.isin).toUpperCase(); const tick=g(r,ci.ticker);
     const row={date,type,ticker:ISIN_RE.test(isin)?isin:tick,tickerShown:ISIN_RE.test(isin)&&tick!==isin?tick:"",name:g(r,ci.name),cls:clsMap[g(r,ci.cls).toLowerCase()]||"",qty:parseNum(g(r,ci.qty))||0,price:parseNum(g(r,ci.price))||0,fee:parseNum(g(r,ci.fee))||0,tax:parseNum(g(r,ci.tax))||0,broker:g(r,ci.broker),note:g(r,ci.note)};
-    if(type==="dividend"||type==="interest") row.amount=parseNum(g(r,ci.amount))||0;
+    if(type==="dividend"||type==="interest"||type==="taxrefund") row.amount=parseNum(g(r,ci.amount))||0;
     return row;
   });
   toast("Import läuft, Assets werden gesucht …");
@@ -2754,6 +2761,7 @@ function impClassifyTr(e){
   if(e.typ==="Handel") kind=/verkauf|sell/i.test(s)?"sell":"buy";
   else if(/^Ertrag/.test(e.typ)) kind="dividend";
   else if(/^Zinsen/.test(e.typ)) kind="interest";
+  else if(/^Steuer/.test(e.typ)&&e.amount>0) kind="taxrefund";
   return {...e,kind,isin,qty:kind==="buy"||kind==="sell"?impQty(s):null,label:e.typ};
 }
 /* Smartbroker+ (Baader Bank): Wertpapierabrechnungen und monatliche Kontoauszüge */
@@ -2790,7 +2798,7 @@ function impParseSbKonto(L){
     const k=l.match(/^Kontostand in EUR am (\d\d\.\d\d\.\d{4})\s+(-?[\d.,]+)\s*(-)?\s*$/);
     if(k){ cur=null; const d=sbDate(k[1]); if(!saldo||d>=saldo.date) saldo={date:d,amount:impNum(k[2])*(k[3]?-1:1)}; continue; }
     const m=l.match(/^(\d\d\.\d\d\.\d{4})\s+(.+?)\s{2,}(\d\d\.\d\d\.\d{4})\s+([\d.,]+)\s*(-)?\s*$/);
-    if(m){ const t=m[2].trim(); const kind=/^Kauf/.test(t)?"buy":/^Verkauf/.test(t)?"sell":/Dividende|Coupons|Ertrag|Aussch/.test(t)?"dividend":/Zins/.test(t)?"interest":"cash";
+    if(m){ const t=m[2].trim(); const kind=/^Kauf/.test(t)?"buy":/^Verkauf/.test(t)?"sell":/Dividende|Coupons|Ertrag|Aussch/.test(t)?"dividend":/Zins/.test(t)?"interest":/Steuerausgleich|Steuererstattung/.test(t)?"taxrefund":"cash";
       cur={date:kind==="dividend"?sbDate(m[3]):sbDate(m[1]),typ:t,label:t,desc:t,kind,isin:"",qty:null,amount:impNum(m[4])*(m[5]?-1:1)}; E.push(cur); continue; }
     if(cur){ const i=l.match(/ISIN\s+([A-Z]{2}[A-Z0-9]{9}\d)/); if(i){ cur.isin=i[1]; continue; }
       const q=l.match(/^STK\s+([\d.,]+)/); if(q){ if(cur.kind==="buy"||cur.kind==="sell") cur.qty=impNum(q[1]); continue; }
@@ -2809,7 +2817,7 @@ function impParseSb(pages){
 /* Trade-Republic-Transaktionsexport (CSV) */
 function impParseTrCsv(rows){
   const H=rows[0].map(h=>h.trim()); const g=(r,n)=>{ const i=H.indexOf(n); return i<0?"":(r[i]||"").trim(); }; const f=v=>v===""?0:Number(v);
-  const map={BUY:"buy",SELL:"sell",DIVIDEND:"dividend",INTEREST_PAYMENT:"interest"};
+  const map={BUY:"buy",SELL:"sell",DIVIDEND:"dividend",INTEREST_PAYMENT:"interest",TAX_REFUND:"taxrefund",TAX_OPTIMIZATION:"taxrefund"};
   const entries=rows.slice(1).map(r=>{
     const t=g(r,"type"), kind=map[t]||"cash";
     const cash=f(g(r,"amount"))+f(g(r,"fee"))+f(g(r,"tax"));
@@ -2826,7 +2834,7 @@ function impParseOwnCsv(rows){
   const col=(...n)=>H.findIndex(h=>n.some(x=>h===x||h.startsWith(x)));
   const ci={date:col("datum","date"),type:col("typ","type"),ticker:col("ticker","symbol"),isin:col("isin"),qty:col("stueck","stuck","anzahl","qty","menge"),price:col("kurs","preis","price"),amount:col("betrag","amount"),fee:col("gebuehr","fee"),tax:col("steuer","tax"),broker:col("broker","depot")};
   if(ci.date<0||ci.type<0||(ci.ticker<0&&ci.isin<0)) throw new Error("Unbekanntes CSV-Format. Gebraucht werden die Spalten Datum, Typ und Ticker oder ISIN.");
-  const tm={kauf:"buy",buy:"buy",verkauf:"sell",sell:"sell",dividende:"dividend",dividend:"dividend",zinsen:"interest",interest:"interest"};
+  const tm={kauf:"buy",buy:"buy",verkauf:"sell",sell:"sell",dividende:"dividend",dividend:"dividend",zinsen:"interest",interest:"interest",steuererstattung:"taxrefund",taxrefund:"taxrefund"};
   const gv=(r,i)=>i>=0?(r[i]||"").trim():"";
   const entries=rows.slice(1).map(r=>{
     let date=gv(r,ci.date); const m=date.match(/^(\d{1,2})\.(\d{1,2})\.(\d{2,4})$/); if(m)date=(m[3].length===2?"20"+m[3]:m[3])+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0");
@@ -2879,7 +2887,7 @@ function impMatch(st,prof){
   const tr=st.entries.filter(e=>e.kind!=="cash");
   tr.forEach(e=>{ e.asset=tick(e); e.st=null; e.tx=null; });
   st.entries.filter(e=>e.kind==="cash").forEach(e=>e.st="cash");
-  const cands=(e,days)=>[...free.values()].filter(t=>t.type===e.kind&&(e.kind==="interest"||t.symbol===e.asset)&&Math.abs(D(t.date)-D(e.date))<=days).map(t=>[Math.abs(D(t.date)-D(e.date)),t]).sort((a,b)=>a[0]-b[0]);
+  const cands=(e,days)=>[...free.values()].filter(t=>t.type===e.kind&&(NO_ASSET(e.kind)||t.symbol===e.asset)&&Math.abs(D(t.date)-D(e.date))<=days).map(t=>[Math.abs(D(t.date)-D(e.date)),t]).sort((a,b)=>a[0]-b[0]);
   const take=(es,t,s,note)=>{ es.forEach(e=>{ e.st=s; e.tx=t; e.note=note||""; }); free.delete(t.id); };
   const diffs=(e,t)=>{ const d=[];
     if(t.date!==e.date) d.push(["date","Datum",fmtDate(t.date),fmtDate(e.date)]);
@@ -2890,19 +2898,19 @@ function impMatch(st,prof){
       if(n(t.tax,e.tax,.005)) d.push(["tax","Steuern",t.tax||0,e.tax]); }
     return d; };
   const takeOne=(e,t,extra)=>{ const d=diffs(e,t); if(!d.length){ take([e],t,"dup",extra?extra[1]:""); return; } if(extra) d.unshift(extra); if(d.length){ take([e],t,"date"); e.diffs=d; e.note=d.map(x=>x[0]==="isin"?x[1]:`${x[1]}: ${x[2]} → ${x[3]}`).join(" · "); } else take([e],t,"dup"); };
-  for(const e of tr){ if(!e.asset&&e.kind!=="interest") continue; const c=cands(e,0).find(([,t])=>ok(impTotal(t),e.amount)); if(c) takeOne(e,c[1]); }
+  for(const e of tr){ if(!e.asset&&!NO_ASSET(e.kind)) continue; const c=cands(e,0).find(([,t])=>ok(impTotal(t),e.amount)); if(c) takeOne(e,c[1]); }
   for(const t of [...free.values()].sort((a,b)=>a.date<b.date?-1:1)){
-    if(!["buy","sell","interest","dividend"].includes(t.type)) continue;
-    const all=tr.filter(e=>!e.st&&e.kind===t.type&&(t.type==="interest"||e.asset===t.symbol)&&Math.abs(D(e.date)-D(t.date))<=6);
+    if(!["buy","sell","interest","dividend","taxrefund"].includes(t.type)) continue;
+    const all=tr.filter(e=>!e.st&&e.kind===t.type&&(NO_ASSET(t.type)||e.asset===t.symbol)&&Math.abs(D(e.date)-D(t.date))<=6);
     if(all.length>1&&ok(impTotal(t),all.reduce((s,e)=>s+e.amount,0))){ take(all,t,"dup","mehrere Buchungen zusammengefasst"); continue; }
     const es=all.slice(0,10);
     let hit=null; const n=es.length;
     for(let mask=1;mask<(1<<n)&&!hit;mask++){ if((mask&(mask-1))===0) continue; const sub=es.filter((_,i)=>mask&(1<<i)); if(sub.length>5) continue; if(ok(impTotal(t),sub.reduce((s,e)=>s+e.amount,0))) hit=sub; }
     if(hit) take(hit,t,"dup","Teilausführungen zusammengefasst");
   }
-  for(const days of [5,120]) for(const e of tr){ if(e.st||(!e.asset&&e.kind!=="interest")) continue; const c=cands(e,days).filter(([,t])=>ok(impTotal(t),e.amount)).sort((a,b)=>Math.abs(impTotal(a[1])-e.amount)-Math.abs(impTotal(b[1])-e.amount)||a[0]-b[0])[0]; if(c) takeOne(e,c[1]); }
+  for(const days of [5,120]) for(const e of tr){ if(e.st||(!e.asset&&!NO_ASSET(e.kind))) continue; const c=cands(e,days).filter(([,t])=>ok(impTotal(t),e.amount)).sort((a,b)=>Math.abs(impTotal(a[1])-e.amount)-Math.abs(impTotal(b[1])-e.amount)||a[0]-b[0])[0]; if(c) takeOne(e,c[1]); }
   /* Wertpapier mit neuer ISIN (z. B. nach Umbenennung/Fusion): gleicher Typ, gleicher Betrag, nahes Datum */
-  for(const e of tr){ if(e.st||e.asset||e.kind==="interest") continue;
+  for(const e of tr){ if(e.st||e.asset||NO_ASSET(e.kind)) continue;
     const c=[...free.values()].filter(t=>t.type===e.kind&&Math.abs(D(t.date)-D(e.date))<=40&&Math.abs(impTotal(t)-e.amount)<0.011).sort((a,b)=>Math.abs(D(a.date)-D(e.date))-Math.abs(D(b.date)-D(e.date)))[0];
     if(c){ const a=A[c.symbol]||{}; e.asset=c.symbol; takeOne(e,c,["isin",`ISIN im Beleg ${e.isin}, in der App ${a.isin||c.symbol} (${a.name||c.symbol}) – wohl umbenannt`]); } }
   for(const e of tr) if(!e.st) e.st="new";
@@ -2937,15 +2945,15 @@ function openImport(){
 function impReview(st,r,prof,fname){
   const E=st.entries, by=s=>E.filter(e=>e.st===s);
   const nw=by("new"), dt=by("date"), dup=by("dup"), cash=by("cash");
-  const KIND={buy:"Kauf",sell:"Verkauf",dividend:"Dividende",interest:"Zinsen"};
+  const KIND={buy:"Kauf",sell:"Verkauf",dividend:"Dividende",interest:"Zinsen",taxrefund:"Steuererstattung"};
   const cashIn=cash.filter(e=>e.amount>0).reduce((s,e)=>s+e.amount,0), cashOut=cash.filter(e=>e.amount<0).reduce((s,e)=>s+e.amount,0);
   const curCash=((S.raw[prof]||{}).cash||{})[st.broker];
   const row=(e,i)=>{ const trade=e.kind==="buy"||e.kind==="sell";
-    return `<tr data-i="${i}"><td><input type="checkbox" class="imp-on" checked ${trade&&!(e.qty>0)?"":""}></td><td>${fmtDate(e.date)}</td><td>${KIND[e.kind]}</td><td class="imp-n">${esc(impName(e,prof)||"")}${e.asset||e.kind==="interest"?"":` <span class="imp-tag">neues Asset</span>`}<small>${esc(e.desc.slice(0,90))}</small></td>
+    return `<tr data-i="${i}"><td><input type="checkbox" class="imp-on" checked ${trade&&!(e.qty>0)?"":""}></td><td>${fmtDate(e.date)}</td><td>${KIND[e.kind]}</td><td class="imp-n">${esc(NO_ASSET(e.kind)?KIND[e.kind]:impName(e,prof)||"")}${e.asset||NO_ASSET(e.kind)?"":` <span class="imp-tag">neues Asset</span>`}<small>${esc(e.desc.slice(0,90))}</small></td>
       <td class="num">${trade?`<input class="imp-q" value="${e.qty!=null?String(e.qty).replace(".",","):""}" placeholder="Stück" inputmode="decimal">${e.qtyHint?`<small>${e.qtyHint}</small>`:""}`:""}</td>
       <td class="num">${trade?`<input class="imp-fee" value="${String(e.fee||0).replace(".",",")}" inputmode="decimal">`:""}</td>
       <td class="num ${e.amount<0?"neg":"pos"}">${eur(e.amount,true)}</td></tr>`; };
-  const drow=(e,i)=>`<tr data-j="${i}"><td><input type="checkbox" class="imp-ov" checked></td><td>${fmtDate(e.date)}</td><td>${KIND[e.kind]}</td><td class="imp-n">${esc(impName(e,prof)||"Zinsen")}<small>${esc(e.note)}</small></td><td class="num">${eur(e.amount,true)}</td></tr>`;
+  const drow=(e,i)=>`<tr data-j="${i}"><td><input type="checkbox" class="imp-ov" checked></td><td>${fmtDate(e.date)}</td><td>${KIND[e.kind]}</td><td class="imp-n">${esc(NO_ASSET(e.kind)?KIND[e.kind]:impName(e,prof)||"")}<small>${esc(e.note)}</small></td><td class="num">${eur(e.amount,true)}</td></tr>`;
   const saldoTxt=st.saldo!=null?`${eur(st.saldo)} am ${fmtDate(st.saldoDate)}${st.saldoNote?` <span class="muted">(${st.saldoNote})</span>`:""}`:"";
   const d=showModal(`<header><h3>Vorschau · ${esc(fname)}</h3><button class="btn ghost small" data-close type="button" aria-label="Schließen">✕</button></header>
     <div class="body imp-body">
@@ -2958,9 +2966,9 @@ function impReview(st,r,prof,fname){
       ${r.free.length?`<h4>Nur in der App</h4><p class="muted">Diese ${st.broker}-Transaktionen aus dem Zeitraum stehen nicht im Auszug. Sie bleiben unverändert.</p>
         <div class="imp-tw"><table class="imp-t"><tbody>${r.free.map(t=>`<tr><td>${fmtDate(t.date)}</td><td>${TYPE[t.type]||t.type}</td><td class="imp-n">${esc(((S.raw[prof].assets||{})[t.symbol]||{}).name||t.symbol||"")}</td><td class="num">${eur(impTotal(t),true)}</td></tr>`).join("")}</tbody></table></div>`:""}
       <h4>Zahlungen &amp; Liquide Mittel</h4>
-      <p class="muted">${cash.length} Zahlungen (Überweisungen, Karte, Bonus, Steuern …) werden nicht als Transaktionen angelegt: ${eur(cashIn,true)} ein, ${eur(cashOut,true)} aus.</p>
+      <p class="muted">${cash.length} Zahlungen (Überweisungen, Karte, Bonus …) werden nicht als Transaktionen angelegt: ${eur(cashIn,true)} ein, ${eur(cashOut,true)} aus.</p>
       ${st.saldo!=null?`<label class="imp-cash"><input type="checkbox" id="imp-cash" checked> Liquide Mittel bei ${esc(st.broker)} auf <b>${saldoTxt}</b> setzen${curCash?` <span class="muted">(bisher ${eur(curCash.amount)} am ${fmtDate(curCash.date)})</span>`:""}</label>`:""}
-      ${dup.length?`<details><summary>${dup.length} schon vorhandene Buchungen ansehen</summary><div class="imp-tw"><table class="imp-t"><tbody>${dup.map(e=>`<tr><td>${fmtDate(e.date)}</td><td>${KIND[e.kind]}</td><td class="imp-n">${esc(impName(e,prof)||"Zinsen")}${e.note?`<small>${e.note}</small>`:""}</td><td class="num">${eur(e.amount,true)}</td></tr>`).join("")}</tbody></table></div></details>`:""}
+      ${dup.length?`<details><summary>${dup.length} schon vorhandene Buchungen ansehen</summary><div class="imp-tw"><table class="imp-t"><tbody>${dup.map(e=>`<tr><td>${fmtDate(e.date)}</td><td>${KIND[e.kind]}</td><td class="imp-n">${esc(NO_ASSET(e.kind)?KIND[e.kind]:impName(e,prof)||"")}${e.note?`<small>${e.note}</small>`:""}</td><td class="num">${eur(e.amount,true)}</td></tr>`).join("")}</tbody></table></div></details>`:""}
       <div class="err" id="imp-err2" role="alert"></div>
     </div>
     <footer><button class="btn" data-close type="button">Abbrechen</button><button class="btn primary" id="imp-go" type="button">Übernehmen</button></footer>`,true);
@@ -2982,7 +2990,7 @@ function impReview(st,r,prof,fname){
     try{
       let added=0, skipped=[];
       if(rows.length){ const res=await api("POST","/api/import",{rows}); added=res.added; skipped=res.skipped||[]; }
-      for(const t of upd){ const {symbol,...rest}=t; await api("POST","/api/tx",t.type==="interest"?{tx:{...rest}}:{assetId:symbol,tx:{...rest}}); }
+      for(const t of upd){ const {symbol,...rest}=t; await api("POST","/api/tx",NO_ASSET(t.type)?{tx:{...rest}}:{assetId:symbol,tx:{...rest}}); }
       if(setCash) await api("POST","/api/cash",{broker:st.broker,amount:Math.max(0,st.saldo),date:st.saldoDate,note:"Kontostand laut "+(st.source.includes("Dateien")?"Kontoauszug":st.source)+" vom "+fmtDate(st.saldoDate)});
       closeModal(); await load(); setTimeout(poll,800);
       toast(`${added} neu, ${upd.length} korrigiert${setCash?", Liquide Mittel gesetzt":""}${skipped.length?", "+skipped.length+" übersprungen":""}`);
