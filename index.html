@@ -328,6 +328,34 @@ body.picking #h-sub .muted{color:var(--ink)}
 .csel-go{display:flex;justify-content:center;margin:18px 0 4px}
 .csel-go .btn{font-size:16px;padding:12px 28px;border-radius:999px}
 .csel-go .btn[disabled]{opacity:.55;cursor:default}
+.stage{--ink:#E5ECF2;--muted:#8E9BA8;--line:#283442;color:#E5ECF2;position:relative;margin-top:4px;padding:0 0 26px;border-radius:22px;overflow:hidden;background:radial-gradient(ellipse 70% 55% at 50% 100%,rgba(233,180,76,.16),transparent 70%),radial-gradient(ellipse 120% 80% at 50% 0,#1a2433 0,#0b1017 70%);border:1px solid var(--line);user-select:none;-webkit-user-select:none}
+.stage-floor{position:absolute;left:-10%;right:-10%;bottom:0;height:24%;background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(0,0,0,.35));border-top:1px solid rgba(233,180,76,.25);border-radius:50% 50% 0 0/40px 40px 0 0}
+.stage-row{position:relative;display:flex;justify-content:center;align-items:flex-end;gap:2%;padding:18px 3% 0}
+.fg{position:relative;flex:1 1 0;max-width:33%;display:flex;flex-direction:column;align-items:center;background:none;border:0;padding:0;margin:0;color:inherit;font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .55s cubic-bezier(.2,.8,.2,1),filter .45s,opacity .45s}
+.stage.dragging .fg{transition:none}
+.fg-body{position:relative;display:block;width:100%;height:min(54vh,520px);margin-top:14px;filter:brightness(.72) saturate(.8);transition:filter .3s,transform .3s}
+.fg:hover .fg-body{filter:brightness(.95)}
+.fg.sel .fg-body{filter:none;transform:scale(1.04);transform-origin:50% 100%}
+.fg-sway{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;transform-origin:50% 100%;animation:fgSway 6.5s ease-in-out infinite}
+.fg-mama .fg-sway{animation-duration:7.6s;animation-delay:-2.1s}
+.fg-family .fg-sway{animation-duration:8.4s;animation-delay:-4s}
+.fg-img{max-width:100%;max-height:100%;object-fit:contain;object-position:50% 100%;display:block;transform-origin:50% 100%;animation:fgBreath 4.2s ease-in-out infinite;filter:drop-shadow(0 18px 22px rgba(0,0,0,.55));pointer-events:none}
+.fg-svg{display:grid;place-items:center;width:70%;aspect-ratio:1;margin-bottom:8%;font-size:40px;font-weight:800}
+.fg-svg svg{width:100%;height:auto;border-radius:22%}
+.fg-family .fg-svg{width:92%;aspect-ratio:auto}
+@keyframes fgSway{0%,100%{transform:rotate(-.7deg) translateX(-.6%) skewX(.5deg)}50%{transform:rotate(.7deg) translateX(.6%) skewX(-.5deg)}}
+@keyframes fgBreath{0%,100%{transform:scale(1,1)}50%{transform:scale(1.006,1.014)}}
+.fg-aura{position:absolute;left:10%;right:10%;bottom:-2%;height:60%;border-radius:50%;background:radial-gradient(ellipse at 50% 100%,rgba(233,180,76,.45),transparent 65%);opacity:0;transition:opacity .4s;animation:fgAura 3.6s ease-in-out infinite}
+.fg.sel .fg-aura{opacity:1}
+@keyframes fgAura{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+.fg-ring{display:block;width:72%;height:22px;margin-top:-12px;border-radius:50%;background:radial-gradient(ellipse at center,rgba(0,0,0,.6),transparent 70%);position:relative}
+.fg.sel .fg-ring{background:radial-gradient(ellipse at center,rgba(233,180,76,.55),rgba(233,180,76,.12) 55%,transparent 72%);box-shadow:0 0 0 1px rgba(233,180,76,.5) inset}
+.fg .ch-hud{min-width:0;width:auto;max-width:96%;z-index:3}
+.fg.sel .ch-hud{border-color:#E9B44C;transform:translateY(-4px)}
+.fg.sel .ch-hud:after{border-color:#E9B44C}
+.csel-go{gap:10px;align-items:center}
+.csel-go #cs-prev,.csel-go #cs-next{display:none;width:46px;height:46px;padding:0;font-size:24px;border-radius:50%}
+@media (prefers-reduced-motion:reduce){.fg-sway,.fg-img,.fg-aura{animation:none}}
 .pick-body{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:end;padding:18px 22px 22px}
 .pick-cover{display:block;height:230px;position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
 .pick-cover img{width:100%;height:100%;object-fit:cover;object-position:50% 18%;display:block;transition:transform .4s}
@@ -379,6 +407,14 @@ body.picking #h-sub .muted{color:var(--ink)}
   .csel::-webkit-scrollbar{display:none}
   .ch{flex:0 0 80%;scroll-snap-align:center}
   .hud-v{font-size:22px}
+  .stage.turn{margin:0 -16px;border-radius:0;border-left:0;border-right:0;padding-bottom:18px}
+  .stage.turn .stage-row{display:block;height:calc(min(54vh,450px) + 200px);padding:0}
+  .stage.turn .fg{position:absolute;left:50%;bottom:0;width:78vw;max-width:none;transform-origin:50% 100%}
+  .stage.turn .fg-body{height:min(54vh,450px);filter:none;margin-top:10px}
+  .stage.turn .fg .ch-hud{opacity:0;transition:opacity .3s}
+  .stage.turn .fg.front .ch-hud{opacity:1}
+  .csel-go #cs-prev,.csel-go #cs-next{display:block}
+  .csel-go .btn.primary{font-size:15px;padding:12px 18px}
   .pick-body{padding:14px 16px 16px;gap:12px}
   .pick-cover{height:170px}
   .pov{padding:16px}
@@ -1610,22 +1646,45 @@ function renderPicker(){
       <span class="pr"><span>Assets</span><span class="num">${eur0(a)}</span></span>
       <span class="pr"><span>Liquide</span><span class="num">${c?eur0(c):"–"}</span></span>
       <span class="pr tot"><span>Gesamt</span><span class="num">${eur0(a+(c||0))}</span></span></span>`;
-  const fig=p=>{ const u=(S.avatars||{})[p]; if(u&&/^data:image\//.test(u)) return `<img src="${u}" alt="">`; return AVATAR[p]?`<span class="cv-svg">${AVATAR[p]}</span>`:`<span class="cv-txt">${p==="family"?"M+D":PROFILE_LABEL[p][0]}</span>`; };
-  const mini=(a,c)=>`<span class="hud-m"><span>Assets <b class="num">${eur0(a)}</b></span><span>Liquide <b class="num">${c?eur0(c):"–"}</b></span><span>Gesamt <b class="num">${eur0(a+(c||0))}</b></span></span>`;
-  const ch=(p,val,line,m)=>`<button type="button" class="ch${S.pickSel===p?" sel":""}" data-p="${p}" aria-label="${PROFILE_LABEL[p]} auswählen">
-      <span class="ch-hud"><span class="hud-n">${PROFILE_LABEL[p]}</span>${val?`<span class="hud-v num">${val}</span>`:""}<span class="hud-s">${line}</span>${m||""}</span>
-      <span class="ch-fig cv-${p}">${fig(p)}</span><span class="ch-floor"></span></button>`;
   const mk=st.mama, dk=st.daniel, fc=(mk&&mk.cash||0)+(dk&&dk.cash||0);
+  const sig=[S.dataVer,Object.keys(S.avatars||{}).join(),gateRemembered(),locked,mk&&mk.value,dk&&dk.value].join("|");
+  if(v.querySelector(".stage")&&v.dataset.sig===sig) return;
+  v.dataset.sig=sig;
+  const ORDER=["mama","daniel","family"];
+  const fig=p=>{ const u=(S.avatars||{})[p]; if(u&&/^data:image\//.test(u)) return `<img class="fg-img" src="${u}" alt="" draggable="false">`; return AVATAR[p]?`<span class="fg-svg">${AVATAR[p]}</span>`:`<span class="fg-svg">${p==="family"?"M+D":PROFILE_LABEL[p][0]}</span>`; };
+  const mini=(a,c)=>`<span class="hud-m"><span>Assets <b class="num">${eur0(a)}</b></span><span>Liquide <b class="num">${c?eur0(c):"–"}</b></span><span>Gesamt <b class="num">${eur0(a+(c||0))}</b></span></span>`;
   const pl=k=>`<span class="${cls(k.profit)}">${eur(k.profit,true)}</span> · <span class="${cls(k.twr)}">${pct(k.twr)}</span>`;
-  v.innerHTML=`<section class="csel" aria-label="Depot wählen">
-    ${ch("mama",mk?eur0(mk.value):"–",mk?pl(mk):"noch leer",mk?mini(mk.value,mk.cash):"")}
-    ${gateRemembered()&&dk?ch("daniel",eur0(dk.value),pl(dk),mini(dk.value,dk.cash)):ch("daniel",locked?"🔒":"","Beträge erst nach dem Öffnen","")}
-    ${ch("family",eur0(fam),"beide Depots zusammen",mini(fam,fc))}
-  </section>
-  <div class="csel-go"><button type="button" class="btn primary" id="cs-go"${S.pickSel?"":" disabled"}>${S.pickSel?`${S.pickSel==="family"?"Familien-Depot":"Depot von "+PROFILE_LABEL[S.pickSel]} öffnen ▶`:"Wähle einen Charakter"}</button></div>`;
-  v.querySelectorAll(".ch").forEach(x=>x.onclick=()=>{ if(S.pickSel===x.dataset.p) return switchProfile(x.dataset.p); S.pickSel=x.dataset.p; renderPicker(); });
-  const go=document.getElementById("cs-go"); if(go) go.onclick=()=>S.pickSel&&switchProfile(S.pickSel);
-  const sc=v.querySelector(".csel"), se=v.querySelector(".ch.sel"); if(sc&&se&&sc.scrollWidth>sc.clientWidth) sc.scrollLeft=se.offsetLeft-(sc.clientWidth-se.clientWidth)/2;
+  const hud={ mama: mk?[eur0(mk.value),pl(mk),mini(mk.value,mk.cash)]:["–","noch leer",""],
+    daniel: gateRemembered()&&dk?[eur0(dk.value),pl(dk),mini(dk.value,dk.cash)]:[locked?"🔒":"","Beträge erst nach dem Öffnen",""],
+    family: [eur0(fam),"beide Depots zusammen",mini(fam,fc)] };
+  const ch=p=>`<button type="button" class="fg fg-${p}" data-p="${p}" aria-label="${PROFILE_LABEL[p]} auswählen">
+      <span class="ch-hud"><span class="hud-n">${PROFILE_LABEL[p]}</span>${hud[p][0]?`<span class="hud-v num">${hud[p][0]}</span>`:""}<span class="hud-s">${hud[p][1]}</span>${hud[p][2]}</span>
+      <span class="fg-body"><span class="fg-aura"></span><span class="fg-sway">${fig(p)}</span></span><span class="fg-ring"></span></button>`;
+  v.innerHTML=`<section class="stage" aria-label="Depot wählen"><div class="stage-floor"></div><div class="stage-row">${ORDER.map(ch).join("")}</div></section>
+  <div class="csel-go"><button type="button" class="btn ghost" id="cs-prev" aria-label="Vorheriger Charakter">‹</button><button type="button" class="btn primary" id="cs-go"></button><button type="button" class="btn ghost" id="cs-next" aria-label="Nächster Charakter">›</button></div>`;
+  const stage=v.querySelector(".stage"), els=[...v.querySelectorAll(".fg")], go=document.getElementById("cs-go");
+  const turn=()=>matchMedia("(max-width:640px)").matches;
+  if(!S.pickSel&&turn()) S.pickSel="daniel";
+  let drag=0;
+  const layout=()=>{
+    const cur=ORDER.indexOf(S.pickSel), T=turn(); stage.classList.toggle("turn",T);
+    els.forEach((el,i)=>{ el.classList.toggle("sel",ORDER[i]===S.pickSel);
+      if(!T){ el.style.transform=""; el.style.zIndex=""; el.style.filter=""; el.style.opacity=""; return; }
+      const th=((i-(cur<0?1:cur))*120+drag)*Math.PI/180, z=Math.cos(th), x=Math.sin(th), k=(z+1)/2;
+      el.style.transform=`translate(-50%,0) translateX(${(x*40).toFixed(2)}vw) translateY(${(-(1-k)*11).toFixed(2)}%) scale(${(.4+.6*k).toFixed(3)})`;
+      el.style.zIndex=String(Math.round(k*10)); el.style.filter=`brightness(${(.35+.65*k).toFixed(2)}) saturate(${(.5+.5*k).toFixed(2)})`; el.style.opacity=(.4+.6*k).toFixed(2); el.classList.toggle("front",k>.9); });
+    go.disabled=!S.pickSel; go.textContent=S.pickSel?`${S.pickSel==="family"?"Familien-Depot":"Depot von "+PROFILE_LABEL[S.pickSel]} öffnen ▶`:"Wähle einen Charakter";
+  };
+  const step=n=>{ const c=ORDER.indexOf(S.pickSel); S.pickSel=ORDER[((c<0?1:c)+n+3)%3]; drag=0; layout(); };
+  els.forEach(el=>el.onclick=()=>{ if(stage.dataset.moved==="1"){ stage.dataset.moved=""; return; } const p=el.dataset.p; if(S.pickSel===p) return switchProfile(p); S.pickSel=p; drag=0; layout(); });
+  go.onclick=()=>S.pickSel&&switchProfile(S.pickSel);
+  document.getElementById("cs-prev").onclick=()=>step(-1); document.getElementById("cs-next").onclick=()=>step(1);
+  let sx=null;
+  stage.addEventListener("touchstart",e=>{ if(!turn())return; sx=e.touches[0].clientX; stage.classList.add("dragging"); },{passive:true});
+  stage.addEventListener("touchmove",e=>{ if(sx==null)return; const dx=e.touches[0].clientX-sx; drag=Math.max(-120,Math.min(120,dx/innerWidth*150)); if(Math.abs(dx)>8) stage.dataset.moved="1"; layout(); },{passive:true});
+  stage.addEventListener("touchend",()=>{ if(sx==null)return; sx=null; stage.classList.remove("dragging"); const d=drag; drag=0; if(d<-25) step(1); else if(d>25) step(-1); else layout(); setTimeout(()=>stage.dataset.moved="",50); });
+  if(!S.pickResize){ S.pickResize=true; addEventListener("resize",()=>{ if(!S.profile&&document.querySelector(".stage")){ const vv=document.getElementById("view"); vv.dataset.sig=""; renderPicker(); } }); }
+  layout();
 }
 function openGate(then){
   if(!S.gate){
@@ -1853,7 +1912,7 @@ async function snapDecrypt(f,key){
 
 /* ---------- Handy-Ansicht (nur lesen) ---------- */
 const SNAP=!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const BUILD="344551ec823d";
+const BUILD="1a2119fd88ee";
 // Ist die Seite älter als der Depotstand, einmal mit neuer Adresse laden (umgeht den Zwischenspeicher)
 function snapCheckBuild(obj){
   if(!obj||!obj.build||BUILD===obj.build||BUILD.indexOf("DEPOT_")>=0)return false;
