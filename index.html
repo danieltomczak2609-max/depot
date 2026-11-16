@@ -303,9 +303,53 @@ body.picking .brand .eyebrow{display:none}
 body.picking #h-sub{font-size:20px;font-weight:650;color:var(--ink)}
 body.picking #h-sub .muted{color:var(--ink)}
 .ppick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:8px}
-.pick{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:start;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px;cursor:pointer;transition:transform .12s,border-color .12s;min-width:0;color:inherit;font:inherit}
+.pick{display:flex;flex-direction:column;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:0;overflow:hidden;cursor:pointer;transition:transform .12s,border-color .12s;min-width:0;color:inherit;font:inherit}
 .pick:hover{border-color:var(--accent);transform:translateY(-2px)}
 .pick:active{transform:scale(.99)}
+.csel{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;margin-top:6px;padding:8px 0 4px}
+.ch{display:flex;flex-direction:column;align-items:center;gap:14px;background:none;border:0;padding:0;color:inherit;font:inherit;cursor:pointer;text-align:center;position:relative}
+.ch-hud{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:78%;padding:12px 16px 12px;border-radius:14px;background:linear-gradient(180deg,rgba(28,38,49,.95),rgba(22,31,40,.95));border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.35);transition:border-color .2s,transform .2s}
+.ch-hud:after{content:"";position:absolute;left:50%;bottom:-8px;width:14px;height:14px;background:#17202a;border-right:1px solid var(--line);border-bottom:1px solid var(--line);transform:translateX(-50%) rotate(45deg)}
+.hud-n{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.hud-v{font-family:var(--f-num);font-size:26px;letter-spacing:-.03em}
+.hud-s{font-size:13px;color:var(--muted)}
+.hud-m{display:flex;gap:12px;margin-top:6px;font-size:11.5px;color:var(--muted);flex-wrap:wrap;justify-content:center}
+.hud-m b{font-family:var(--f-num);color:var(--ink);font-weight:600;margin-left:3px}
+.ch-fig{position:relative;display:block;width:100%;aspect-ratio:955/1024;border-radius:20px;overflow:hidden;border:1px solid var(--line);transition:transform .25s,box-shadow .25s,border-color .25s;filter:saturate(.85) brightness(.82)}
+.ch-fig img{width:100%;height:100%;object-fit:cover;object-position:50% 0;display:block}
+.ch-fig .cv-svg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.ch-fig .cv-svg svg{height:70%;width:auto;border-radius:22%;box-shadow:0 14px 40px rgba(0,0,0,.4)}
+.ch-fig.cv-family .cv-svg svg{height:auto;width:82%;border-radius:12%}
+.ch-floor{display:block;width:70%;height:16px;margin-top:-6px;border-radius:50%;background:radial-gradient(ellipse at center,rgba(0,0,0,.55),transparent 70%)}
+.ch:hover .ch-fig{filter:none;transform:translateY(-4px)}
+.ch.sel .ch-fig{filter:none;transform:translateY(-6px) scale(1.02);border-color:#E9B44C;box-shadow:0 0 0 2px #E9B44C,0 18px 50px rgba(233,180,76,.25)}
+.ch.sel .ch-hud{border-color:#E9B44C;transform:translateY(-6px)}
+.ch.sel .ch-hud:after{border-color:#E9B44C}
+.csel-go{display:flex;justify-content:center;margin:18px 0 4px}
+.csel-go .btn{font-size:16px;padding:12px 28px;border-radius:999px}
+.csel-go .btn[disabled]{opacity:.55;cursor:default}
+.pick-body{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:end;padding:18px 22px 22px}
+.pick-cover{display:block;height:230px;position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
+.pick-cover img{width:100%;height:100%;object-fit:cover;object-position:50% 18%;display:block;transition:transform .4s}
+.pick:hover .pick-cover img{transform:scale(1.04)}
+.pick-cover .cv-svg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.pick-cover .cv-svg svg{height:78%;width:auto;border-radius:22%;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.cv-family .cv-svg svg{height:52%;border-radius:12%}
+.cv-mama{background:radial-gradient(circle at 50% 40%,#f6b8d6 0,#c27ad8 55%,#5b2b7a 100%)}
+.cv-family{background:radial-gradient(circle at 50% 50%,#4a0f18 0,#160709 60%,#060506 100%)}
+.cv-daniel{background:radial-gradient(circle at 50% 40%,#5a3a10 0,#140d06 70%)}
+.cv-txt{position:absolute;inset:0;display:grid;place-items:center;font-size:48px;font-weight:800;color:#fff}
+.pov{margin-top:16px;padding:22px}
+.pov-h{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:16px}
+.pov-h h3{margin:0;font-size:17px}
+.pov-g{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.pov-k{background:var(--surface-2);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.pov-k span{font-size:12px;color:var(--muted)}
+.pov-k b{font-family:var(--f-num);font-size:20px;font-weight:600;letter-spacing:-.02em;white-space:nowrap}
+.pov-bar{display:flex;height:12px;border-radius:6px;overflow:hidden;gap:2px;background:var(--surface-2)}
+.pov-bar i{display:block;height:100%}
+.pov-l{display:flex;gap:18px;margin-top:10px;font-size:13px;color:var(--muted)}
+.pov-l i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
 .pick-l{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0}
 .pick-av{width:64px;height:64px;border-radius:17px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:16px;margin-bottom:6px;overflow:hidden;flex:none}
 .pick-av.img{background:none}
@@ -331,7 +375,16 @@ body.picking #h-sub .muted{color:var(--ink)}
 @media (max-width:640px){
   .pbar{display:flex;width:100%;margin:0 0 4px}.pbar[hidden]{display:none}.pbar button{flex:1;padding:8px 6px}
   .ppick{grid-template-columns:1fr;gap:10px}
-  .pick{padding:16px;gap:12px}
+  .csel{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:14px;margin:0 -16px;padding:6px 16px 6px;scrollbar-width:none}
+  .csel::-webkit-scrollbar{display:none}
+  .ch{flex:0 0 80%;scroll-snap-align:center}
+  .hud-v{font-size:22px}
+  .pick-body{padding:14px 16px 16px;gap:12px}
+  .pick-cover{height:170px}
+  .pov{padding:16px}
+  .pov-g{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .pov-k:first-child{grid-column:1/-1}
+  .pov-k b{font-size:18px}
   .pick-av{width:52px;height:52px;border-radius:14px;font-size:14px;margin-bottom:2px}
   .pick-av.wide{width:143px}
   .pick-n{font-size:17px}.pick-v{font-size:21px}
@@ -1531,6 +1584,18 @@ function personStats(){
   S.tx=keep.tx; S.assets=keep.assets;
   PSTAT={ver:S.dataVer,data:out}; return out;
 }
+function famOverview(st,fam,fc){
+  const m=st.mama||{value:0,profit:0,cash:0}, d=st.daniel||{value:0,profit:0,cash:0};
+  const tot=fam+fc, prof=(m.profit||0)+(d.profit||0), inv=fam-prof;
+  const sh=x=>tot>0?x/tot*100:0, mv=m.value+(m.cash||0), dv=d.value+(d.cash||0);
+  const kpi=(l,v,c)=>`<div class="pov-k"><span>${l}</span><b class="num ${c||""}">${v}</b></div>`;
+  return `<section class="card pov" aria-label="Familie im Überblick">
+    <div class="pov-h"><h3>Familie im Überblick</h3><span class="muted">${new Date().toLocaleDateString("de-DE",{weekday:"long",day:"numeric",month:"long"})}</span></div>
+    <div class="pov-g">${kpi("Gesamtvermögen",eur0(tot))}${kpi("Investiert",eur0(fam))}${kpi("Liquide Mittel",eur0(fc))}${kpi("Ergebnis",eur(prof,true),cls(prof))}${kpi("Rendite auf Einsatz",inv>0?pct(prof/inv):"–",cls(prof))}</div>
+    <div class="pov-bar" role="img" aria-label="Aufteilung Mama und Daniel"><i style="width:${sh(mv)}%;background:${PERSON_COL.mama}"></i><i style="width:${sh(dv)}%;background:${PERSON_COL.daniel}"></i></div>
+    <div class="pov-l"><span><i style="background:${PERSON_COL.mama}"></i>Mama ${sh(mv).toFixed(0)} %</span><span><i style="background:${PERSON_COL.daniel}"></i>Daniel ${sh(dv).toFixed(0)} %</span></div>
+  </section>`;
+}
 function renderPicker(){
   document.body.classList.add("picking");
   document.getElementById("h-total").textContent="–";
@@ -1545,19 +1610,22 @@ function renderPicker(){
       <span class="pr"><span>Assets</span><span class="num">${eur0(a)}</span></span>
       <span class="pr"><span>Liquide</span><span class="num">${c?eur0(c):"–"}</span></span>
       <span class="pr tot"><span>Gesamt</span><span class="num">${eur0(a+(c||0))}</span></span></span>`;
-  const tile=(p,k,sub,right)=>`<button type="button" class="pick" data-p="${p}">
-      <span class="pick-l"><span class="pick-av${AVATAR[p]?" img":""}${p==="family"?" wide":""}" style="${AVATAR[p]?"":"background:"+PERSON_COL[p]}">${avatarHtml(p)}</span>
-      <span class="pick-n">${PROFILE_LABEL[p]}</span>
-      ${k?`<span class="pick-v">${k}</span>`:""}
-      <span class="pick-s">${sub}</span></span>${right||""}</button>`;
-  const mk=st.mama, fc=(st.mama&&st.mama.cash||0)+(st.daniel&&st.daniel.cash||0);
-  v.innerHTML=`<section class="ppick" aria-label="Depot wählen">
-    ${tile("mama",mk?eur0(mk.value):"–",mk?`<span class="${cls(mk.profit)}">${eur(mk.profit,true)}</span> · <span class="${cls(mk.twr)}">${pct(mk.twr)}</span>`:"noch leer",mk?brk(mk.value,mk.cash):"")}
-    ${(()=>{ const dk=st.daniel; if(gateRemembered()&&dk) return tile("daniel",eur0(dk.value),`<span class="${cls(dk.profit)}">${eur(dk.profit,true)}</span> · <span class="${cls(dk.twr)}">${pct(dk.twr)}</span>`,brk(dk.value,dk.cash));
-      return tile("daniel",locked?"🔒":"","Beträge erst nach dem Öffnen",""); })()}
-    ${tile("family",eur0(fam),"beide Depots zusammen",brk(fam,fc))}
-  </section>`;
-  v.querySelectorAll(".pick").forEach(x=>x.onclick=()=>switchProfile(x.dataset.p));
+  const fig=p=>{ const u=(S.avatars||{})[p]; if(u&&/^data:image\//.test(u)) return `<img src="${u}" alt="">`; return AVATAR[p]?`<span class="cv-svg">${AVATAR[p]}</span>`:`<span class="cv-txt">${p==="family"?"M+D":PROFILE_LABEL[p][0]}</span>`; };
+  const mini=(a,c)=>`<span class="hud-m"><span>Assets <b class="num">${eur0(a)}</b></span><span>Liquide <b class="num">${c?eur0(c):"–"}</b></span><span>Gesamt <b class="num">${eur0(a+(c||0))}</b></span></span>`;
+  const ch=(p,val,line,m)=>`<button type="button" class="ch${S.pickSel===p?" sel":""}" data-p="${p}" aria-label="${PROFILE_LABEL[p]} auswählen">
+      <span class="ch-hud"><span class="hud-n">${PROFILE_LABEL[p]}</span>${val?`<span class="hud-v num">${val}</span>`:""}<span class="hud-s">${line}</span>${m||""}</span>
+      <span class="ch-fig cv-${p}">${fig(p)}</span><span class="ch-floor"></span></button>`;
+  const mk=st.mama, dk=st.daniel, fc=(mk&&mk.cash||0)+(dk&&dk.cash||0);
+  const pl=k=>`<span class="${cls(k.profit)}">${eur(k.profit,true)}</span> · <span class="${cls(k.twr)}">${pct(k.twr)}</span>`;
+  v.innerHTML=`<section class="csel" aria-label="Depot wählen">
+    ${ch("mama",mk?eur0(mk.value):"–",mk?pl(mk):"noch leer",mk?mini(mk.value,mk.cash):"")}
+    ${gateRemembered()&&dk?ch("daniel",eur0(dk.value),pl(dk),mini(dk.value,dk.cash)):ch("daniel",locked?"🔒":"","Beträge erst nach dem Öffnen","")}
+    ${ch("family",eur0(fam),"beide Depots zusammen",mini(fam,fc))}
+  </section>
+  <div class="csel-go"><button type="button" class="btn primary" id="cs-go"${S.pickSel?"":" disabled"}>${S.pickSel?`${S.pickSel==="family"?"Familien-Depot":"Depot von "+PROFILE_LABEL[S.pickSel]} öffnen ▶`:"Wähle einen Charakter"}</button></div>`;
+  v.querySelectorAll(".ch").forEach(x=>x.onclick=()=>{ if(S.pickSel===x.dataset.p) return switchProfile(x.dataset.p); S.pickSel=x.dataset.p; renderPicker(); });
+  const go=document.getElementById("cs-go"); if(go) go.onclick=()=>S.pickSel&&switchProfile(S.pickSel);
+  const sc=v.querySelector(".csel"), se=v.querySelector(".ch.sel"); if(sc&&se&&sc.scrollWidth>sc.clientWidth) sc.scrollLeft=se.offsetLeft-(sc.clientWidth-se.clientWidth)/2;
 }
 function openGate(then){
   if(!S.gate){
@@ -1785,7 +1853,7 @@ async function snapDecrypt(f,key){
 
 /* ---------- Handy-Ansicht (nur lesen) ---------- */
 const SNAP=!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const BUILD="30d659f3a2f1";
+const BUILD="344551ec823d";
 // Ist die Seite älter als der Depotstand, einmal mit neuer Adresse laden (umgeht den Zwischenspeicher)
 function snapCheckBuild(obj){
   if(!obj||!obj.build||BUILD===obj.build||BUILD.indexOf("DEPOT_")>=0)return false;
