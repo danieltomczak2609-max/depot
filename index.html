@@ -348,6 +348,27 @@ body.picking #h-sub .muted{color:var(--ink)}
 .petals i{position:absolute;top:-6%;width:var(--s);height:calc(var(--s)*.72);border-radius:80% 0 80% 0;background:radial-gradient(ellipse at 30% 30%,hsl(var(--h) 100% 88%),hsl(var(--h) 85% 62%) 55%,hsl(var(--h) 70% 42%));box-shadow:0 0 8px hsla(var(--h),100%,70%,.55);opacity:0;animation:petal var(--d) linear var(--dl) infinite}
 @keyframes petal{0%{transform:translate(0,0) rotate(0) rotateX(0);opacity:0}8%{opacity:.95}50%{transform:translate(calc(var(--dx) * -1),55vh) rotate(calc(var(--r) * .5)) rotateX(180deg)}90%{opacity:.85}100%{transform:translate(var(--dx),110vh) rotate(var(--r)) rotateX(360deg);opacity:0}}
 @media (prefers-reduced-motion:reduce){.petals{display:none}}
+.imp-drop{display:flex;flex-direction:column;align-items:center;gap:4px;padding:34px 16px;border:2px dashed var(--line);border-radius:14px;cursor:pointer;text-align:center;transition:border-color .15s,background .15s}
+.imp-drop:hover,.imp-drop.over{border-color:var(--accent);background:var(--surface-2)}
+.imp-drop span{font-size:13px;color:var(--muted)}
+.imp-body h4{margin:18px 0 4px;font-size:15px}
+.imp-body p.muted{margin:0 0 8px;font-size:13px}
+.imp-sum{display:flex;flex-wrap:wrap;gap:8px}
+.imp-sum span{background:var(--surface-2);border-radius:10px;padding:8px 12px;font-size:13px}
+.imp-tw{max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+.imp-t{width:100%;border-collapse:collapse;font-size:13px}
+.imp-t th{position:sticky;top:0;background:var(--surface);text-align:left;font-size:11px;color:var(--muted);font-weight:650;padding:8px 10px}
+.imp-t td{padding:7px 10px;border-top:1px solid var(--line);vertical-align:top;white-space:nowrap}
+.imp-t .num{text-align:right;font-family:var(--f-num)}
+.imp-t .imp-n{white-space:normal;min-width:180px}
+.imp-t small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+.imp-t input:not([type]){width:86px;text-align:right;padding:4px 6px;font:inherit;font-family:var(--f-num);background:var(--surface-2);border:1px solid var(--line);border-radius:6px;color:var(--ink)}
+.imp-t .imp-fee{width:56px!important}
+.imp-tag{font-size:10px;background:var(--accent);color:#fff;border-radius:5px;padding:1px 5px;margin-left:4px;vertical-align:1px}
+.imp-cash{display:flex;gap:8px;align-items:flex-start;font-size:14px;padding:10px 12px;background:var(--surface-2);border-radius:10px}
+.imp-body details{margin-top:14px}
+.imp-body summary{cursor:pointer;font-size:13px;color:var(--muted)}
+body.fam .no-fam{display:none!important}
 .fg-pos{position:absolute;left:50%;bottom:0;display:block;pointer-events:none}
 .fg-pos .fg-img{width:100%;height:100%;max-width:none;max-height:none}
 .fg-body,.fg-sway{overflow:visible}
@@ -679,6 +700,7 @@ tfoot td{font-weight:700;border-top:1px solid var(--line);border-bottom:0}
     </div>
     <div class="actions">
       <button class="btn edit-only" id="btn-refresh" type="button">Kurse aktualisieren</button>
+      <button class="btn edit-only no-fam" id="btn-imp" type="button">Kontoauszug importieren</button>
       <button class="btn primary edit-only" id="btn-add" type="button">+ Transaktion <kbd>N</kbd></button>
     </div>
   </header>
@@ -1969,7 +1991,7 @@ async function snapDecrypt(f,key){
 
 /* ---------- Handy-Ansicht (nur lesen) ---------- */
 const SNAP=!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const BUILD="0244b4678c15";
+const BUILD="76b5240c377b";
 // Ist die Seite älter als der Depotstand, einmal mit neuer Adresse laden (umgeht den Zwischenspeicher)
 function snapCheckBuild(obj){
   if(!obj||!obj.build||BUILD===obj.build||BUILD.indexOf("DEPOT_")>=0)return false;
@@ -2679,12 +2701,221 @@ async function importCsv(file){
   }catch(e){ toast(apiMsg(e)); }
 }
 
+/* ---------- Kontoauszug-Import (PDF / CSV) mit Duplikat-Erkennung ---------- */
+const IMP_MON={jan:1,feb:2,"mär":3,mar:3,"märz":3,apr:4,mai:5,jun:6,juni:6,jul:7,juli:7,aug:8,sep:9,sept:9,okt:10,nov:11,dez:12};
+const impNum=s=>{ s=String(s).replace(/[€\s]/g,""); const neg=/^-/.test(s); s=s.replace(/^-/,""); const v=Number(s.replace(/\./g,"").replace(",",".")); return neg?-v:v; };
+const impQty=s=>{ const m=String(s).match(/quantity:\s*-?\s*([\d.,]+)/i); return m?Number(m[1].replace(",",".")):null; };
+async function impPdfText(file){
+  const pdfjs=await import("/vendor/pdf.min.mjs");
+  pdfjs.GlobalWorkerOptions.workerSrc="/vendor/pdf.worker.min.mjs";
+  const doc=await pdfjs.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
+  const pages=[];
+  for(let n=1;n<=doc.numPages;n++){ const pg=await doc.getPage(n); const tc=await pg.getTextContent();
+    pages.push(tc.items.filter(i=>i.str&&i.str.trim()).map(i=>({x:i.transform[4],y:i.transform[5],s:i.str.trim()}))); }
+  return pages;
+}
+/* Trade-Republic-Kontoauszug (PDF): Spalten Datum | Typ | Beschreibung | Eingang | Ausgang | Saldo */
+function impParseTrPdf(pages){
+  const flat=pages.flat().map(i=>i.s).join(" ");
+  if(!/TRADE REPUBLIC/i.test(flat)||!/UMSATZ/i.test(flat)) throw new Error("Das PDF sieht nicht wie ein Trade-Republic-Kontoauszug aus.");
+  const out=[];
+  for(const items of pages){
+    const hdr=items.find(i=>/^ZAHLUNGSEINGANG/.test(i.s)&&items.some(j=>j.s==="SALDO"&&Math.abs(j.y-i.y)<2)); if(!hdr) continue;
+    const sal=items.find(i=>i.s==="SALDO"&&Math.abs(i.y-hdr.y)<2);
+    const cut=sal?sal.x-15:470, inOut=hdr.x+45, top=hdr.y-2;
+    const dates=items.filter(i=>i.x<hdr.x-200&&i.y<top&&/^\d{1,2} [A-Za-zäÄ]+\.?$/.test(i.s)).sort((a,b)=>b.y-a.y);
+    dates.forEach((d,k)=>{
+      const next=dates[k+1], lo=next?next.y+3:0;
+      const blk=items.filter(i=>i!==d&&i.y<=d.y+3&&i.y>lo&&i.y>d.y-16&&i.y<top);
+      const yr=blk.find(i=>i.x<d.x+20&&/^20\d\d$/.test(i.s)); if(!yr) return;
+      const [dd,mn]=d.s.replace(".","").split(" "); const m=IMP_MON[mn.toLowerCase()]; if(!m) return;
+      const typ=blk.filter(i=>i.x>=d.x+20&&i.x<d.x+80).sort((a,b)=>a.x-b.x)[0];
+      const am=blk.filter(i=>/-?[\d.]+,\d\d €$/.test(i.s)&&i.x>=hdr.x-10);
+      const saldoI=am.filter(i=>i.x>=cut).sort((a,b)=>b.x-a.x)[0]; let amtI=am.filter(i=>i.x<cut&&/^-?[\d.]+,\d\d €$/.test(i.s))[0];
+      if(!saldoI||!typ) return;
+      let a=null, side=null, glued=null;
+      if(amtI){ a=Math.abs(impNum(amtI.s)); side=amtI.x<inOut?1:-1; }
+      else { glued=blk.find(i=>i!==saldoI&&/\s-?[\d.]+,\d\d €$/.test(i.s)); if(!glued) return; a=Math.abs(impNum(glued.s.match(/(-?[\d.]+,\d\d) €$/)[1])); }
+      const desc=blk.filter(i=>i!==yr&&i!==typ&&i!==saldoI&&i!==amtI&&i.x>=d.x+20).sort((a,b)=>b.y-a.y||a.x-b.x).map(i=>i===glued?i.s.replace(/\s-?[\d.]+,\d\d €$/,""):i.s).join(" ").replace(/\s+/g," ").trim();
+      out.push({date:`${yr.s}-${String(m).padStart(2,"0")}-${String(dd).padStart(2,"0")}`,typ:typ.s,desc,abs:a,side,saldo:impNum(saldoI.s)});
+    });
+  }
+  if(!out.length) throw new Error("Im PDF wurden keine Buchungen gefunden.");
+  let prev=0, bad=0;
+  for(const e of out){
+    if(e.side==null) e.side=Math.abs(prev+e.abs-e.saldo)<0.011?1:-1;
+    else if(Math.abs(prev+e.side*e.abs-e.saldo)>0.011&&Math.abs(prev-e.side*e.abs-e.saldo)<0.011) e.side=-e.side;
+    e.amount=e.side*e.abs; if(Math.abs(prev+e.amount-e.saldo)>0.011) bad++; prev=e.saldo; delete e.abs; delete e.side; }
+  return {broker:"Trade Republic",source:"PDF-Kontoauszug",entries:out.map(impClassifyTr),saldo:out[out.length-1].saldo,saldoDate:out.reduce((m,e)=>e.date>m?e.date:m,""),checks:bad};
+}
+function impClassifyTr(e){
+  const s=e.desc, isinM=s.match(/\b([A-Z]{2}[A-Z0-9]{9}\d)\b/), isin=isinM?isinM[1]:"";
+  let kind="cash";
+  if(e.typ==="Handel") kind=/verkauf|sell/i.test(s)?"sell":"buy";
+  else if(/^Ertrag/.test(e.typ)) kind="dividend";
+  else if(/^Zinsen/.test(e.typ)) kind="interest";
+  return {...e,kind,isin,qty:kind==="buy"||kind==="sell"?impQty(s):null,label:e.typ};
+}
+/* Trade-Republic-Transaktionsexport (CSV) */
+function impParseTrCsv(rows){
+  const H=rows[0].map(h=>h.trim()); const g=(r,n)=>{ const i=H.indexOf(n); return i<0?"":(r[i]||"").trim(); }; const f=v=>v===""?0:Number(v);
+  const map={BUY:"buy",SELL:"sell",DIVIDEND:"dividend",INTEREST_PAYMENT:"interest"};
+  const entries=rows.slice(1).map(r=>{
+    const t=g(r,"type"), kind=map[t]||"cash";
+    const cash=f(g(r,"amount"))+f(g(r,"fee"))+f(g(r,"tax"));
+    return {date:g(r,"date"),typ:t,label:t,desc:[g(r,"name"),g(r,"description")].filter(Boolean).join(" · "),kind,isin:g(r,"symbol"),
+      qty:kind==="buy"||kind==="sell"?Math.abs(f(g(r,"shares"))):null,price:f(g(r,"price"))||null,fee:Math.abs(f(g(r,"fee"))),tax:Math.abs(f(g(r,"tax"))),gross:f(g(r,"amount")),amount:Math.round(cash*100)/100};
+  }).filter(e=>e.date);
+  entries.sort((a,b)=>a.date<b.date?-1:1);
+  const sum=Math.round(entries.reduce((s,e)=>s+e.amount,0)*100)/100;
+  return {broker:"Trade Republic",source:"CSV-Export",entries,saldo:sum,saldoDate:entries.length?entries[entries.length-1].date:"",saldoNote:"Summe aller Buchungen in der Datei",checks:0};
+}
+/* eigene CSV (Spalten Datum, Typ, Ticker/ISIN …) */
+function impParseOwnCsv(rows){
+  const H=rows[0].map(h=>h.trim().toLowerCase().replace(/ü/g,"ue").replace(/ä/g,"ae").replace(/ö/g,"oe"));
+  const col=(...n)=>H.findIndex(h=>n.some(x=>h===x||h.startsWith(x)));
+  const ci={date:col("datum","date"),type:col("typ","type"),ticker:col("ticker","symbol"),isin:col("isin"),qty:col("stueck","stuck","anzahl","qty","menge"),price:col("kurs","preis","price"),amount:col("betrag","amount"),fee:col("gebuehr","fee"),tax:col("steuer","tax"),broker:col("broker","depot")};
+  if(ci.date<0||ci.type<0||(ci.ticker<0&&ci.isin<0)) throw new Error("Unbekanntes CSV-Format. Gebraucht werden die Spalten Datum, Typ und Ticker oder ISIN.");
+  const tm={kauf:"buy",buy:"buy",verkauf:"sell",sell:"sell",dividende:"dividend",dividend:"dividend",zinsen:"interest",interest:"interest"};
+  const gv=(r,i)=>i>=0?(r[i]||"").trim():"";
+  const entries=rows.slice(1).map(r=>{
+    let date=gv(r,ci.date); const m=date.match(/^(\d{1,2})\.(\d{1,2})\.(\d{2,4})$/); if(m)date=(m[3].length===2?"20"+m[3]:m[3])+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0");
+    const kind=tm[gv(r,ci.type).toLowerCase()]||"cash", qty=parseNum(gv(r,ci.qty))||0, price=parseNum(gv(r,ci.price))||0, fee=parseNum(gv(r,ci.fee))||0, tax=parseNum(gv(r,ci.tax))||0;
+    const amt=kind==="buy"?-(qty*price+fee+tax):kind==="sell"?qty*price-fee-tax:(parseNum(gv(r,ci.amount))||0)-tax;
+    const isin=gv(r,ci.isin).toUpperCase();
+    return {date,typ:gv(r,ci.type),label:gv(r,ci.type),desc:gv(r,ci.ticker)||isin,kind,isin:ISIN_RE.test(isin)?isin:"",ticker0:gv(r,ci.ticker),qty,price,fee,tax,amount:Math.round(amt*100)/100,broker:gv(r,ci.broker)};
+  }).filter(e=>e.date&&e.kind!=="cash");
+  return {broker:entries[0]&&entries[0].broker||"",source:"CSV",entries,saldo:null,checks:0};
+}
+async function impRead(file){
+  if(/\.pdf$/i.test(file.name)||file.type==="application/pdf") return impParseTrPdf(await impPdfText(file));
+  const rows=parseCsv(await file.text()); if(rows.length<2) throw new Error("Die Datei enthält keine Zeilen.");
+  const h=rows[0].map(x=>x.trim());
+  if(h.includes("transaction_id")&&h.includes("type")&&h.includes("amount")) return impParseTrCsv(rows);
+  return impParseOwnCsv(rows);
+}
+/* Abgleich mit vorhandenen Transaktionen */
+function impTotal(t){
+  const q=+t.qty||0,p=+t.price||0,f=+t.fee||0,x=+t.tax||0;
+  if(t.type==="buy") return -(q*p+f+x); if(t.type==="sell") return q*p-f-x; return (+t.amount||0)-x;
+}
+function impMatch(st,prof){
+  const raw=S.raw[prof]||{tx:[],assets:{}}, A=raw.assets||{};
+  const isin2id={}; Object.entries(A).forEach(([k,a])=>{ if(a.isin) isin2id[a.isin]=k; });
+  const tick=e=>{ if(e.isin&&isin2id[e.isin]) return e.isin&&isin2id[e.isin];
+    const m=(e.isin||"").match(/^XF000([A-Z]+?)0\d{3}$/); if(m&&A[m[1]]) return m[1];
+    const t=(e.ticker0||"").toUpperCase(); if(t&&A[t]) return t; const hit=Object.entries(A).find(([k,a])=>t&&(a.ticker||"").toUpperCase()===t); return hit?hit[0]:null; };
+  const broker=st.broker;
+  const free=new Map(raw.tx.filter(t=>!broker||t.broker===broker).map(t=>[t.id,t]));
+  const D=s=>new Date(s+"T00:00:00Z").getTime()/864e5;
+  const ok=(a,b)=>Math.abs(Math.abs(a)-Math.abs(b))<=Math.max(.06,Math.abs(b)*.004);
+  const tr=st.entries.filter(e=>e.kind!=="cash");
+  tr.forEach(e=>{ e.asset=tick(e); e.st=null; e.tx=null; });
+  st.entries.filter(e=>e.kind==="cash").forEach(e=>e.st="cash");
+  const cands=(e,days)=>[...free.values()].filter(t=>t.type===e.kind&&(e.kind==="interest"||t.symbol===e.asset)&&Math.abs(D(t.date)-D(e.date))<=days).map(t=>[Math.abs(D(t.date)-D(e.date)),t]).sort((a,b)=>a[0]-b[0]);
+  const take=(es,t,s,note)=>{ es.forEach(e=>{ e.st=s; e.tx=t; e.note=note||""; }); free.delete(t.id); };
+  for(const e of tr){ if(!e.asset&&e.kind!=="interest") continue; const c=cands(e,5).find(([,t])=>ok(impTotal(t),e.amount)); if(c) take([e],c[1],"dup"); }
+  for(const t of [...free.values()].sort((a,b)=>a.date<b.date?-1:1)){
+    if(!["buy","sell","interest","dividend"].includes(t.type)) continue;
+    const all=tr.filter(e=>!e.st&&e.kind===t.type&&(t.type==="interest"||e.asset===t.symbol)&&Math.abs(D(e.date)-D(t.date))<=6);
+    if(all.length>1&&ok(impTotal(t),all.reduce((s,e)=>s+e.amount,0))){ take(all,t,"dup","mehrere Buchungen zusammengefasst"); continue; }
+    const es=all.slice(0,10);
+    let hit=null; const n=es.length;
+    for(let mask=1;mask<(1<<n)&&!hit;mask++){ if((mask&(mask-1))===0) continue; const sub=es.filter((_,i)=>mask&(1<<i)); if(sub.length>5) continue; if(ok(impTotal(t),sub.reduce((s,e)=>s+e.amount,0))) hit=sub; }
+    if(hit) take(hit,t,"dup","Teilausführungen zusammengefasst");
+  }
+  for(const e of tr){ if(e.st||(!e.asset&&e.kind!=="interest")) continue; const c=cands(e,120).find(([,t])=>ok(impTotal(t),e.amount)); if(c) take([e],c[1],"date","Datum in der App: "+fmtDate(c[1].date)); }
+  for(const e of tr) if(!e.st) e.st="new";
+  /* Vorschlag für neue Käufe/Verkäufe: Stück, Kurs, Gebühr */
+  const held=(asset,date)=>raw.tx.filter(t=>t.symbol===asset&&t.date<=date).reduce((s,t)=>s+(t.type==="buy"?+t.qty||0:t.type==="sell"?-(+t.qty||0):0),0);
+  for(const e of tr.filter(e=>e.st==="new"&&(e.kind==="buy"||e.kind==="sell"))){
+    const split=tr.some(o=>o!==e&&o.kind===e.kind&&o.asset===e.asset&&o.date===e.date);
+    if(e.fee==null) e.fee=(e.qty!=null&&e.qty%1!==0&&split)||/sparplan|savings|saveback|round/i.test(e.desc)?0:1;
+    if(e.tax==null) e.tax=0;
+    if(e.qty==null&&e.kind==="sell"&&e.asset){ const h=held(e.asset,e.date); if(h>0){ e.qty=Math.round(h*1e6)/1e6; e.qtyHint="Restbestand laut App"; } }
+    if(e.price==null&&e.qty) e.price=Math.round((Math.abs(e.amount)+(e.kind==="buy"?-e.fee:e.fee+e.tax))/e.qty*1e4)/1e4;
+  }
+  return {free:[...free.values()].filter(t=>t.date>=st.entries.reduce((m,e)=>e.date<m?e.date:m,"9999")&&t.date<=st.saldoDate)};
+}
+function impName(e,prof){ const A=(S.raw[prof]||{}).assets||{}; const a=e.asset&&A[e.asset]; return a?(a.name||a.ticker):(e.desc.match(/[A-Z]{2}[A-Z0-9]{9}\d\s+(.+?)(,| quantity| \d{6,}|$)/)||[,e.isin||e.desc])[1]; }
+function openImport(){
+  if(S.profile==="family"){ toast("Bitte zuerst Mama oder Daniel auswählen."); return; }
+  const prof=S.profile;
+  const d=showModal(`<header><h3>Kontoauszug importieren · ${esc(PROFILE_LABEL[prof])}</h3><button class="btn ghost small" data-close type="button" aria-label="Schließen">✕</button></header>
+    <div class="body"><p class="muted" style="margin:0 0 12px">PDF-Kontoauszug oder CSV-Export von Trade Republic, oder eine CSV aus dieser App. Bereits eingetragene Transaktionen werden erkannt und nicht doppelt angelegt. Du siehst erst eine Vorschau, gespeichert wird erst nach deiner Bestätigung.</p>
+    <label class="imp-drop" for="imp-f"><b>Datei auswählen</b><span>oder hierher ziehen · PDF oder CSV</span></label><input id="imp-f" type="file" accept=".pdf,.csv,application/pdf,text/csv" hidden>
+    <div class="err" id="imp-err" role="alert"></div></div>`,true);
+  const go=async f=>{ if(!f)return; const err=d.querySelector("#imp-err"); err.textContent=""; d.querySelector(".imp-drop b").textContent="Wird gelesen …";
+    try{ const st=await impRead(f); const r=impMatch(st,prof); impReview(st,r,prof,f.name); }
+    catch(e){ console.error(e); err.textContent=e.message||String(e); d.querySelector(".imp-drop b").textContent="Datei auswählen"; } };
+  d.querySelector("#imp-f").onchange=e=>go(e.target.files[0]);
+  const dz=d.querySelector(".imp-drop");
+  dz.ondragover=e=>{e.preventDefault(); dz.classList.add("over");}; dz.ondragleave=()=>dz.classList.remove("over");
+  dz.ondrop=e=>{e.preventDefault(); dz.classList.remove("over"); go(e.dataTransfer.files[0]);};
+}
+function impReview(st,r,prof,fname){
+  const E=st.entries, by=s=>E.filter(e=>e.st===s);
+  const nw=by("new"), dt=by("date"), dup=by("dup"), cash=by("cash");
+  const KIND={buy:"Kauf",sell:"Verkauf",dividend:"Dividende",interest:"Zinsen"};
+  const cashIn=cash.filter(e=>e.amount>0).reduce((s,e)=>s+e.amount,0), cashOut=cash.filter(e=>e.amount<0).reduce((s,e)=>s+e.amount,0);
+  const curCash=((S.raw[prof]||{}).cash||{})[st.broker];
+  const row=(e,i)=>{ const trade=e.kind==="buy"||e.kind==="sell";
+    return `<tr data-i="${i}"><td><input type="checkbox" class="imp-on" checked ${trade&&!(e.qty>0)?"":""}></td><td>${fmtDate(e.date)}</td><td>${KIND[e.kind]}</td><td class="imp-n">${esc(impName(e,prof)||"")}${e.asset||e.kind==="interest"?"":` <span class="imp-tag">neues Asset</span>`}<small>${esc(e.desc.slice(0,90))}</small></td>
+      <td class="num">${trade?`<input class="imp-q" value="${e.qty!=null?String(e.qty).replace(".",","):""}" placeholder="Stück" inputmode="decimal">${e.qtyHint?`<small>${e.qtyHint}</small>`:""}`:""}</td>
+      <td class="num">${trade?`<input class="imp-fee" value="${String(e.fee||0).replace(".",",")}" inputmode="decimal">`:""}</td>
+      <td class="num ${e.amount<0?"neg":"pos"}">${eur(e.amount,true)}</td></tr>`; };
+  const drow=(e,i)=>`<tr data-j="${i}"><td><input type="checkbox" class="imp-ov" checked></td><td>${fmtDate(e.date)}</td><td>${KIND[e.kind]}</td><td class="imp-n">${esc(impName(e,prof)||"Zinsen")}<small>${esc(e.note)}</small></td><td class="num">${eur(e.amount,true)}</td></tr>`;
+  const saldoTxt=st.saldo!=null?`${eur(st.saldo)} am ${fmtDate(st.saldoDate)}${st.saldoNote?` <span class="muted">(${st.saldoNote})</span>`:""}`:"";
+  const d=showModal(`<header><h3>Vorschau · ${esc(fname)}</h3><button class="btn ghost small" data-close type="button" aria-label="Schließen">✕</button></header>
+    <div class="body imp-body">
+      <div class="imp-sum"><span><b>${E.length}</b> Buchungen gelesen</span><span><b>${dup.length}</b> schon vorhanden</span><span class="pos"><b>${nw.length}</b> neu</span><span><b>${dt.length}</b> mit anderem Datum</span><span><b>${cash.length}</b> Zahlungen</span></div>
+      ${st.checks?`<p class="err">Achtung: Bei ${st.checks} Buchungen passt der Saldo nicht zusammen. Bitte die Vorschau genau prüfen.</p>`:""}
+      ${nw.length?`<h4>Neue Transaktionen</h4><p class="muted">Werden angelegt. Stückzahl und Gebühr kannst du anpassen; der Kurs wird aus dem Betrag berechnet.</p>
+        <div class="imp-tw"><table class="imp-t"><thead><tr><th></th><th>Datum</th><th>Typ</th><th>Asset</th><th class="num">Stück</th><th class="num">Gebühr</th><th class="num">Betrag</th></tr></thead><tbody id="imp-new">${nw.map((e,i)=>row(e,i)).join("")}</tbody></table></div>`:""}
+      ${dt.length?`<h4>Anderes Datum</h4><p class="muted">Gleicher Betrag, aber in der App mit anderem Datum eingetragen. Angehakt = Datum aus dem Auszug übernehmen.</p>
+        <div class="imp-tw"><table class="imp-t"><tbody id="imp-dt">${dt.map((e,i)=>drow(e,i)).join("")}</tbody></table></div>`:""}
+      ${r.free.length?`<h4>Nur in der App</h4><p class="muted">Diese ${st.broker}-Transaktionen aus dem Zeitraum stehen nicht im Auszug. Sie bleiben unverändert.</p>
+        <div class="imp-tw"><table class="imp-t"><tbody>${r.free.map(t=>`<tr><td>${fmtDate(t.date)}</td><td>${TYPE[t.type]||t.type}</td><td class="imp-n">${esc(((S.raw[prof].assets||{})[t.symbol]||{}).name||t.symbol||"")}</td><td class="num">${eur(impTotal(t),true)}</td></tr>`).join("")}</tbody></table></div>`:""}
+      <h4>Zahlungen &amp; Liquide Mittel</h4>
+      <p class="muted">${cash.length} Zahlungen (Überweisungen, Karte, Bonus, Steuern …) werden nicht als Transaktionen angelegt: ${eur(cashIn,true)} ein, ${eur(cashOut,true)} aus.</p>
+      ${st.saldo!=null?`<label class="imp-cash"><input type="checkbox" id="imp-cash" checked> Liquide Mittel bei ${esc(st.broker)} auf <b>${saldoTxt}</b> setzen${curCash?` <span class="muted">(bisher ${eur(curCash.amount)} am ${fmtDate(curCash.date)})</span>`:""}</label>`:""}
+      ${dup.length?`<details><summary>${dup.length} schon vorhandene Buchungen ansehen</summary><div class="imp-tw"><table class="imp-t"><tbody>${dup.map(e=>`<tr><td>${fmtDate(e.date)}</td><td>${KIND[e.kind]}</td><td class="imp-n">${esc(impName(e,prof)||"Zinsen")}${e.note?`<small>${e.note}</small>`:""}</td><td class="num">${eur(e.amount,true)}</td></tr>`).join("")}</tbody></table></div></details>`:""}
+      <div class="err" id="imp-err2" role="alert"></div>
+    </div>
+    <footer><button class="btn" data-close type="button">Abbrechen</button><button class="btn primary" id="imp-go" type="button">Übernehmen</button></footer>`,true);
+  d.querySelector("#imp-go").onclick=async()=>{
+    const err=d.querySelector("#imp-err2"); err.textContent="";
+    const rows=[], upd=[];
+    for(const tr of d.querySelectorAll("#imp-new tr")){ if(!tr.querySelector(".imp-on").checked) continue; const e=nw[+tr.dataset.i];
+      const base={date:e.date,type:e.kind,broker:st.broker,note:"Import "+st.source};
+      if(e.kind==="buy"||e.kind==="sell"){ const q=parseNum(tr.querySelector(".imp-q").value), fee=parseNum(tr.querySelector(".imp-fee").value)||0;
+        if(!(q>0)){ err.textContent=`Bitte die Stückzahl für ${impName(e,prof)} am ${fmtDate(e.date)} eintragen oder die Zeile abhaken.`; tr.querySelector(".imp-q").focus(); return; }
+        const tax=e.tax||0, price=(Math.abs(e.amount)+(e.kind==="buy"?-fee-tax:fee+tax))/q;
+        rows.push({...base,ticker:e.asset||e.isin,qty:q,price:Math.round(price*1e6)/1e6,fee,tax}); }
+      else if(e.kind==="dividend") rows.push({...base,ticker:e.asset||e.isin,amount:e.gross!=null?e.gross:e.amount,tax:e.gross!=null?e.tax:0,fee:0});
+      else rows.push({...base,amount:e.gross!=null?e.gross:e.amount,tax:e.gross!=null?e.tax:0,fee:0}); }
+    for(const tr of d.querySelectorAll("#imp-dt tr")){ if(tr.querySelector(".imp-ov").checked){ const e=dt[+tr.dataset.j]; upd.push({...e.tx,date:e.date}); } }
+    const setCash=d.querySelector("#imp-cash")&&d.querySelector("#imp-cash").checked;
+    if(!rows.length&&!upd.length&&!setCash){ closeModal(); toast("Nichts zu übernehmen."); return; }
+    const btn=d.querySelector("#imp-go"); btn.disabled=true; btn.textContent="Wird gespeichert …";
+    try{
+      let added=0, skipped=[];
+      if(rows.length){ const res=await api("POST","/api/import",{rows}); added=res.added; skipped=res.skipped||[]; }
+      for(const t of upd){ const {symbol,...rest}=t; await api("POST","/api/tx",t.type==="interest"?{tx:{...rest}}:{assetId:symbol,tx:{...rest}}); }
+      if(setCash) await api("POST","/api/cash",{broker:st.broker,amount:Math.max(0,st.saldo),date:st.saldoDate,note:"Laut "+st.source});
+      closeModal(); await load(); setTimeout(poll,800);
+      toast(`${added} neu, ${upd.length} Datum korrigiert${setCash?", Liquide Mittel gesetzt":""}${skipped.length?", "+skipped.length+" übersprungen":""}`);
+      if(skipped.length) console.warn("Übersprungen:",skipped);
+    }catch(e){ err.textContent=apiMsg(e); btn.disabled=false; btn.textContent="Übernehmen"; }
+  };
+}
 let toastT=0;
 function toast(msg){ const h=document.getElementById("toast-host"); h.innerHTML=`<div class="toast" role="status">${esc(msg)}</div>`; clearTimeout(toastT); toastT=setTimeout(()=>h.innerHTML="",2600); }
 
 /* ---------- Start ---------- */
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{ S.view=t.dataset.view; saveUi(); render(); });
 document.getElementById("btn-add").onclick=()=>openTx();
+document.getElementById("btn-imp").onclick=()=>openImport();
 document.getElementById("btn-refresh").onclick=()=>fireRefresh();
 document.addEventListener("keydown",e=>{
   if(document.getElementById("modal").innerHTML)return;
