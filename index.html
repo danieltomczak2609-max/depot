@@ -1991,7 +1991,7 @@ async function snapDecrypt(f,key){
 
 /* ---------- Handy-Ansicht (nur lesen) ---------- */
 const SNAP=!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const BUILD="76b5240c377b";
+const BUILD="cddd0c463774";
 // Ist die Seite älter als der Depotstand, einmal mit neuer Adresse laden (umgeht den Zwischenspeicher)
 function snapCheckBuild(obj){
   if(!obj||!obj.build||BUILD===obj.build||BUILD.indexOf("DEPOT_")>=0)return false;
@@ -2711,7 +2711,7 @@ async function impPdfText(file){
   const doc=await pdfjs.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
   const pages=[];
   for(let n=1;n<=doc.numPages;n++){ const pg=await doc.getPage(n); const tc=await pg.getTextContent();
-    pages.push(tc.items.filter(i=>i.str&&i.str.trim()).map(i=>({x:i.transform[4],y:i.transform[5],s:i.str.trim()}))); }
+    pages.push(tc.items.filter(i=>i.str&&i.str.trim()).map(i=>({x:i.transform[4],y:i.transform[5],w:i.width,s:i.str.trim()}))); }
   return pages;
 }
 /* Trade-Republic-Kontoauszug (PDF): Spalten Datum | Typ | Beschreibung | Eingang | Ausgang | Saldo */
@@ -2756,6 +2756,56 @@ function impClassifyTr(e){
   else if(/^Zinsen/.test(e.typ)) kind="interest";
   return {...e,kind,isin,qty:kind==="buy"||kind==="sell"?impQty(s):null,label:e.typ};
 }
+/* Smartbroker+ (Baader Bank): Wertpapierabrechnungen und monatliche Kontoauszüge */
+function impLines(pages){
+  const out=[];
+  for(const items of pages){
+    const rows=[];
+    for(const it of [...items].sort((a,b)=>b.y-a.y||a.x-b.x)){ const r=rows.find(r=>Math.abs(r.y-it.y)<1.8); if(r) r.it.push(it); else rows.push({y:it.y,it:[it]}); }
+    for(const r of rows){ r.it.sort((a,b)=>a.x-b.x); let s="", end=null;
+      for(const i of r.it){ if(end!=null){ const gap=i.x-end; s+=gap>8?"   ":" "; } s+=i.s; end=i.x+(i.w||i.s.length*4.4); }
+      out.push(s); }
+  }
+  return out;
+}
+const sbDate=s=>{ const [d,m,y]=s.split("."); return `${y}-${m}-${d}`; };
+function impParseSbAbr(L,txt){
+  const kind=/Wertpapierabrechnung:\s*Verkauf/.test(txt)?"sell":"buy";
+  const isin=(txt.match(/ISIN:\s*([A-Z]{2}[A-Z0-9]{9}\d)/)||[])[1]||"";
+  const qty=impNum((txt.match(/STK\s+([\d.,]+)/)||[])[1]||"0");
+  const dm=txt.match(/STK\s+[\d.,]+\s+[A-Z]{3}\s+[\d.,]+\s+.*?(\d\d\.\d\d\.\d{4})/); const om=txt.match(/Auftragsdatum:\s*(\d\d\.\d\d\.\d{4})/);
+  const date=sbDate((dm||om)[1]);
+  const kwL=L.find(l=>/^Kurswert\b/.test(l)); const kw=kwL?impNum([...kwL.matchAll(/EUR\s+([\d.,]+)/g)].pop()[1]):0;
+  let fee=0, tax=0;
+  for(const l of L){ const a=l.match(/EUR\s+([\d.,]+)\s*-?\s*$/); if(!a) continue;
+    if(/^(Provision|Börsengebühr|Gebühr|Fremde Spesen|Fremdspesen|Handelsentgelt|Transaktionsentgelt|Clearstream|Maklercourtage)/.test(l)) fee+=impNum(a[1]);
+    else if(/^(Kapitalertragsteuer|Solidaritätszuschlag|Kirchensteuer)\s+EUR/.test(l)) tax+=impNum(a[1]); }
+  const tm=txt.match(/Zu (?:Lasten|Gunsten) Konto[^\n]*?EUR\s+([\d.,]+)/); const tot=tm?impNum(tm[1]):kind==="buy"?kw+fee:kw-fee-tax;
+  const nm=(L.find(l=>/^STK\s+[\d.,]+\s{2,}\D/.test(l))||"").replace(/^STK\s+[\d.,]+\s+/,"").split(/\s{2,}/)[0];
+  return [{date,typ:kind==="buy"?"Kauf":"Verkauf",label:"Abrechnung",desc:nm+" · "+isin,kind,isin,qty,price:qty?Math.round(kw/qty*1e6)/1e6:null,fee:Math.round(fee*100)/100,tax:Math.round(tax*100)/100,full:true,amount:Math.round((kind==="buy"?-tot:tot)*100)/100}];
+}
+function impParseSbKonto(L){
+  const E=[]; let cur=null, saldo=null;
+  for(const l of L){
+    const k=l.match(/^Kontostand in EUR am (\d\d\.\d\d\.\d{4})\s+(-?[\d.,]+)\s*(-)?\s*$/);
+    if(k){ cur=null; const d=sbDate(k[1]); if(!saldo||d>=saldo.date) saldo={date:d,amount:impNum(k[2])*(k[3]?-1:1)}; continue; }
+    const m=l.match(/^(\d\d\.\d\d\.\d{4})\s+(.+?)\s{2,}(\d\d\.\d\d\.\d{4})\s+([\d.,]+)\s*(-)?\s*$/);
+    if(m){ const t=m[2].trim(); const kind=/^Kauf/.test(t)?"buy":/^Verkauf/.test(t)?"sell":/Dividende|Coupons|Ertrag|Aussch/.test(t)?"dividend":/Zins/.test(t)?"interest":"cash";
+      cur={date:kind==="dividend"?sbDate(m[3]):sbDate(m[1]),typ:t,label:t,desc:t,kind,isin:"",qty:null,amount:impNum(m[4])*(m[5]?-1:1)}; E.push(cur); continue; }
+    if(cur){ const i=l.match(/ISIN\s+([A-Z]{2}[A-Z0-9]{9}\d)/); if(i){ cur.isin=i[1]; continue; }
+      const q=l.match(/^STK\s+([\d.,]+)/); if(q){ if(cur.kind==="buy"||cur.kind==="sell") cur.qty=impNum(q[1]); continue; }
+      if(/^Vorgangs-Nr|^\d+$/.test(l.trim())) continue;
+      if(cur.desc===cur.typ&&l.trim()&&!/^(Dieses Dokument|Bitte beachten|smartbroker)/i.test(l.trim())) cur.desc=l.trim()+" · "+cur.typ; }
+  }
+  return {entries:E,saldo};
+}
+function impParseSb(pages){
+  const L=impLines(pages).map(l=>l.trim()); const txt=L.join("\n");
+  if(/Wertpapierabrechnung:\s*(Kauf|Verkauf)/.test(txt)) return {broker:"Smart Broker",source:"Smartbroker-Abrechnung",entries:impParseSbAbr(L,txt),saldo:null,checks:0};
+  if(/Kontoauszug|Kontostand in EUR/.test(txt)){ const r=impParseSbKonto(L); return {broker:"Smart Broker",source:"Smartbroker-Kontoauszug",entries:r.entries,saldo:r.saldo?r.saldo.amount:null,saldoDate:r.saldo?r.saldo.date:"",checks:0}; }
+  return {broker:"Smart Broker",source:"Smartbroker-Dokument",entries:[],saldo:null,checks:0,skip:true};
+}
+
 /* Trade-Republic-Transaktionsexport (CSV) */
 function impParseTrCsv(rows){
   const H=rows[0].map(h=>h.trim()); const g=(r,n)=>{ const i=H.indexOf(n); return i<0?"":(r[i]||"").trim(); }; const f=v=>v===""?0:Number(v);
@@ -2787,12 +2837,29 @@ function impParseOwnCsv(rows){
   }).filter(e=>e.date&&e.kind!=="cash");
   return {broker:entries[0]&&entries[0].broker||"",source:"CSV",entries,saldo:null,checks:0};
 }
-async function impRead(file){
-  if(/\.pdf$/i.test(file.name)||file.type==="application/pdf") return impParseTrPdf(await impPdfText(file));
+async function impReadOne(file){
+  if(/\.pdf$/i.test(file.name)||file.type==="application/pdf"){
+    const pages=await impPdfText(file); const flat=pages.flat().slice(0,400).map(i=>i.s).join(" ");
+    if(/Baader Bank|Smartbroker|SMARTBROKER/i.test(flat)) return impParseSb(pages);
+    return impParseTrPdf(pages); }
   const rows=parseCsv(await file.text()); if(rows.length<2) throw new Error("Die Datei enthält keine Zeilen.");
   const h=rows[0].map(x=>x.trim());
   if(h.includes("transaction_id")&&h.includes("type")&&h.includes("amount")) return impParseTrCsv(rows);
   return impParseOwnCsv(rows);
+}
+async function impRead(files){
+  const parts=[], skipped=[];
+  for(const f of files){ try{ const st=await impReadOne(f); if(st.skip) skipped.push(f.name); else parts.push(st); }catch(e){ if(files.length===1) throw e; skipped.push(f.name+" ("+e.message+")"); } }
+  if(!parts.length) throw new Error(skipped.length?"In den Dateien wurden keine Buchungen gefunden (z. B. Depotauszüge oder Steuerbelege werden übersprungen).":"Keine Datei gelesen.");
+  const brokers=[...new Set(parts.map(p=>p.broker).filter(Boolean))];
+  if(brokers.length>1) throw new Error("Bitte Dateien von nur einem Broker auf einmal importieren ("+brokers.join(", ")+").");
+  const full=parts.flatMap(p=>p.entries.filter(e=>e.full));
+  let entries=parts.flatMap(p=>p.entries.filter(e=>!e.full));
+  const D=s=>new Date(s+"T00:00:00Z").getTime()/864e5;
+  entries=entries.filter(e=>!((e.kind==="buy"||e.kind==="sell")&&full.some(a=>a.kind===e.kind&&a.isin===e.isin&&Math.abs(a.amount-e.amount)<0.011&&Math.abs(D(a.date)-D(e.date))<=6)));
+  entries=entries.concat(full).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
+  const sp=parts.filter(p=>p.saldo!=null).sort((a,b)=>a.saldoDate<b.saldoDate?1:-1)[0];
+  return {broker:brokers[0]||"",source:parts.length>1?parts.length+" Dateien":parts[0].source,entries,saldo:sp?sp.saldo:null,saldoDate:sp?sp.saldoDate:(entries.length?entries[entries.length-1].date:""),saldoNote:sp&&sp.saldoNote||"",checks:parts.reduce((s,p)=>s+(p.checks||0),0),skipped,files:files.length};
 }
 /* Abgleich mit vorhandenen Transaktionen */
 function impTotal(t){
@@ -2814,7 +2881,16 @@ function impMatch(st,prof){
   st.entries.filter(e=>e.kind==="cash").forEach(e=>e.st="cash");
   const cands=(e,days)=>[...free.values()].filter(t=>t.type===e.kind&&(e.kind==="interest"||t.symbol===e.asset)&&Math.abs(D(t.date)-D(e.date))<=days).map(t=>[Math.abs(D(t.date)-D(e.date)),t]).sort((a,b)=>a[0]-b[0]);
   const take=(es,t,s,note)=>{ es.forEach(e=>{ e.st=s; e.tx=t; e.note=note||""; }); free.delete(t.id); };
-  for(const e of tr){ if(!e.asset&&e.kind!=="interest") continue; const c=cands(e,5).find(([,t])=>ok(impTotal(t),e.amount)); if(c) take([e],c[1],"dup"); }
+  const diffs=(e,t)=>{ const d=[];
+    if(t.date!==e.date) d.push(["date","Datum",fmtDate(t.date),fmtDate(e.date)]);
+    if(e.full){ const n=(a,b,eps)=>Math.abs((+a||0)-(+b||0))>eps;
+      if(n(t.qty,e.qty,1e-6)) d.push(["qty","Stück",t.qty,e.qty]);
+      if(n(t.price,e.price,Math.max(.0051,Math.abs(e.price)*1e-4))) d.push(["price","Kurs",t.price,e.price]);
+      if(n(t.fee,e.fee,.005)) d.push(["fee","Gebühr",t.fee||0,e.fee]);
+      if(n(t.tax,e.tax,.005)) d.push(["tax","Steuern",t.tax||0,e.tax]); }
+    return d; };
+  const takeOne=(e,t,extra)=>{ const d=diffs(e,t); if(!d.length){ take([e],t,"dup",extra?extra[1]:""); return; } if(extra) d.unshift(extra); if(d.length){ take([e],t,"date"); e.diffs=d; e.note=d.map(x=>x[0]==="isin"?x[1]:`${x[1]}: ${x[2]} → ${x[3]}`).join(" · "); } else take([e],t,"dup"); };
+  for(const e of tr){ if(!e.asset&&e.kind!=="interest") continue; const c=cands(e,0).find(([,t])=>ok(impTotal(t),e.amount)); if(c) takeOne(e,c[1]); }
   for(const t of [...free.values()].sort((a,b)=>a.date<b.date?-1:1)){
     if(!["buy","sell","interest","dividend"].includes(t.type)) continue;
     const all=tr.filter(e=>!e.st&&e.kind===t.type&&(t.type==="interest"||e.asset===t.symbol)&&Math.abs(D(e.date)-D(t.date))<=6);
@@ -2824,12 +2900,17 @@ function impMatch(st,prof){
     for(let mask=1;mask<(1<<n)&&!hit;mask++){ if((mask&(mask-1))===0) continue; const sub=es.filter((_,i)=>mask&(1<<i)); if(sub.length>5) continue; if(ok(impTotal(t),sub.reduce((s,e)=>s+e.amount,0))) hit=sub; }
     if(hit) take(hit,t,"dup","Teilausführungen zusammengefasst");
   }
-  for(const e of tr){ if(e.st||(!e.asset&&e.kind!=="interest")) continue; const c=cands(e,120).find(([,t])=>ok(impTotal(t),e.amount)); if(c) take([e],c[1],"date","Datum in der App: "+fmtDate(c[1].date)); }
+  for(const days of [5,120]) for(const e of tr){ if(e.st||(!e.asset&&e.kind!=="interest")) continue; const c=cands(e,days).filter(([,t])=>ok(impTotal(t),e.amount)).sort((a,b)=>Math.abs(impTotal(a[1])-e.amount)-Math.abs(impTotal(b[1])-e.amount)||a[0]-b[0])[0]; if(c) takeOne(e,c[1]); }
+  /* Wertpapier mit neuer ISIN (z. B. nach Umbenennung/Fusion): gleicher Typ, gleicher Betrag, nahes Datum */
+  for(const e of tr){ if(e.st||e.asset||e.kind==="interest") continue;
+    const c=[...free.values()].filter(t=>t.type===e.kind&&Math.abs(D(t.date)-D(e.date))<=40&&Math.abs(impTotal(t)-e.amount)<0.011).sort((a,b)=>Math.abs(D(a.date)-D(e.date))-Math.abs(D(b.date)-D(e.date)))[0];
+    if(c){ const a=A[c.symbol]||{}; e.asset=c.symbol; takeOne(e,c,["isin",`ISIN im Beleg ${e.isin}, in der App ${a.isin||c.symbol} (${a.name||c.symbol}) – wohl umbenannt`]); } }
   for(const e of tr) if(!e.st) e.st="new";
   /* Vorschlag für neue Käufe/Verkäufe: Stück, Kurs, Gebühr */
   const held=(asset,date)=>raw.tx.filter(t=>t.symbol===asset&&t.date<=date).reduce((s,t)=>s+(t.type==="buy"?+t.qty||0:t.type==="sell"?-(+t.qty||0):0),0);
   for(const e of tr.filter(e=>e.st==="new"&&(e.kind==="buy"||e.kind==="sell"))){
     const split=tr.some(o=>o!==e&&o.kind===e.kind&&o.asset===e.asset&&o.date===e.date);
+    if(e.full) continue;
     if(e.fee==null) e.fee=(e.qty!=null&&e.qty%1!==0&&split)||/sparplan|savings|saveback|round/i.test(e.desc)?0:1;
     if(e.tax==null) e.tax=0;
     if(e.qty==null&&e.kind==="sell"&&e.asset){ const h=held(e.asset,e.date); if(h>0){ e.qty=Math.round(h*1e6)/1e6; e.qtyHint="Restbestand laut App"; } }
@@ -2842,16 +2923,16 @@ function openImport(){
   if(S.profile==="family"){ toast("Bitte zuerst Mama oder Daniel auswählen."); return; }
   const prof=S.profile;
   const d=showModal(`<header><h3>Kontoauszug importieren · ${esc(PROFILE_LABEL[prof])}</h3><button class="btn ghost small" data-close type="button" aria-label="Schließen">✕</button></header>
-    <div class="body"><p class="muted" style="margin:0 0 12px">PDF-Kontoauszug oder CSV-Export von Trade Republic, oder eine CSV aus dieser App. Bereits eingetragene Transaktionen werden erkannt und nicht doppelt angelegt. Du siehst erst eine Vorschau, gespeichert wird erst nach deiner Bestätigung.</p>
-    <label class="imp-drop" for="imp-f"><b>Datei auswählen</b><span>oder hierher ziehen · PDF oder CSV</span></label><input id="imp-f" type="file" accept=".pdf,.csv,application/pdf,text/csv" hidden>
+    <div class="body"><p class="muted" style="margin:0 0 12px">Trade Republic: Kontoauszug (PDF) oder Transaktionsexport (CSV). Smartbroker+: Wertpapierabrechnungen und monatliche Kontoauszüge (PDF, gern alle auf einmal). Oder eine CSV aus dieser App. Bereits eingetragene Transaktionen werden erkannt und nicht doppelt angelegt. Du siehst erst eine Vorschau, gespeichert wird erst nach deiner Bestätigung.</p>
+    <label class="imp-drop" for="imp-f"><b>Dateien auswählen</b><span>oder hierher ziehen · PDF oder CSV · auch mehrere auf einmal</span></label><input id="imp-f" type="file" accept=".pdf,.csv,application/pdf,text/csv" multiple hidden>
     <div class="err" id="imp-err" role="alert"></div></div>`,true);
-  const go=async f=>{ if(!f)return; const err=d.querySelector("#imp-err"); err.textContent=""; d.querySelector(".imp-drop b").textContent="Wird gelesen …";
-    try{ const st=await impRead(f); const r=impMatch(st,prof); impReview(st,r,prof,f.name); }
-    catch(e){ console.error(e); err.textContent=e.message||String(e); d.querySelector(".imp-drop b").textContent="Datei auswählen"; } };
-  d.querySelector("#imp-f").onchange=e=>go(e.target.files[0]);
+  const go=async fl=>{ const files=[...(fl||[])]; if(!files.length)return; const err=d.querySelector("#imp-err"); err.textContent=""; d.querySelector(".imp-drop b").textContent=files.length>1?files.length+" Dateien werden gelesen …":"Wird gelesen …";
+    try{ const st=await impRead(files); const r=impMatch(st,prof); impReview(st,r,prof,files.length>1?files.length+" Dateien":files[0].name); }
+    catch(e){ console.error(e); err.textContent=e.message||String(e); d.querySelector(".imp-drop b").textContent="Dateien auswählen"; } };
+  d.querySelector("#imp-f").onchange=e=>go(e.target.files);
   const dz=d.querySelector(".imp-drop");
   dz.ondragover=e=>{e.preventDefault(); dz.classList.add("over");}; dz.ondragleave=()=>dz.classList.remove("over");
-  dz.ondrop=e=>{e.preventDefault(); dz.classList.remove("over"); go(e.dataTransfer.files[0]);};
+  dz.ondrop=e=>{e.preventDefault(); dz.classList.remove("over"); go(e.dataTransfer.files);};
 }
 function impReview(st,r,prof,fname){
   const E=st.entries, by=s=>E.filter(e=>e.st===s);
@@ -2868,11 +2949,11 @@ function impReview(st,r,prof,fname){
   const saldoTxt=st.saldo!=null?`${eur(st.saldo)} am ${fmtDate(st.saldoDate)}${st.saldoNote?` <span class="muted">(${st.saldoNote})</span>`:""}`:"";
   const d=showModal(`<header><h3>Vorschau · ${esc(fname)}</h3><button class="btn ghost small" data-close type="button" aria-label="Schließen">✕</button></header>
     <div class="body imp-body">
-      <div class="imp-sum"><span><b>${E.length}</b> Buchungen gelesen</span><span><b>${dup.length}</b> schon vorhanden</span><span class="pos"><b>${nw.length}</b> neu</span><span><b>${dt.length}</b> mit anderem Datum</span><span><b>${cash.length}</b> Zahlungen</span></div>
+      ${st.skipped&&st.skipped.length?`<p class="muted">${st.skipped.length} Datei(en) ohne Buchungen übersprungen (z. B. Depotauszug, Steuerbescheinigung).</p>`:""}<div class="imp-sum"><span><b>${E.length}</b> Buchungen gelesen${st.files>1?` aus ${st.files-(st.skipped||[]).length} Dateien`:""}</span><span><b>${dup.length}</b> schon vorhanden</span><span class="pos"><b>${nw.length}</b> neu</span><span><b>${dt.length}</b> abweichend</span><span><b>${cash.length}</b> Zahlungen</span></div>
       ${st.checks?`<p class="err">Achtung: Bei ${st.checks} Buchungen passt der Saldo nicht zusammen. Bitte die Vorschau genau prüfen.</p>`:""}
       ${nw.length?`<h4>Neue Transaktionen</h4><p class="muted">Werden angelegt. Stückzahl und Gebühr kannst du anpassen; der Kurs wird aus dem Betrag berechnet.</p>
         <div class="imp-tw"><table class="imp-t"><thead><tr><th></th><th>Datum</th><th>Typ</th><th>Asset</th><th class="num">Stück</th><th class="num">Gebühr</th><th class="num">Betrag</th></tr></thead><tbody id="imp-new">${nw.map((e,i)=>row(e,i)).join("")}</tbody></table></div>`:""}
-      ${dt.length?`<h4>Anderes Datum</h4><p class="muted">Gleicher Betrag, aber in der App mit anderem Datum eingetragen. Angehakt = Datum aus dem Auszug übernehmen.</p>
+      ${dt.length?`<h4>Abweichungen</h4><p class="muted">Gleicher Betrag, aber in der App mit anderen Angaben eingetragen. Angehakt = Angaben aus dem Beleg übernehmen.</p>
         <div class="imp-tw"><table class="imp-t"><tbody id="imp-dt">${dt.map((e,i)=>drow(e,i)).join("")}</tbody></table></div>`:""}
       ${r.free.length?`<h4>Nur in der App</h4><p class="muted">Diese ${st.broker}-Transaktionen aus dem Zeitraum stehen nicht im Auszug. Sie bleiben unverändert.</p>
         <div class="imp-tw"><table class="imp-t"><tbody>${r.free.map(t=>`<tr><td>${fmtDate(t.date)}</td><td>${TYPE[t.type]||t.type}</td><td class="imp-n">${esc(((S.raw[prof].assets||{})[t.symbol]||{}).name||t.symbol||"")}</td><td class="num">${eur(impTotal(t),true)}</td></tr>`).join("")}</tbody></table></div>`:""}
@@ -2894,7 +2975,7 @@ function impReview(st,r,prof,fname){
         rows.push({...base,ticker:e.asset||e.isin,qty:q,price:Math.round(price*1e6)/1e6,fee,tax}); }
       else if(e.kind==="dividend") rows.push({...base,ticker:e.asset||e.isin,amount:e.gross!=null?e.gross:e.amount,tax:e.gross!=null?e.tax:0,fee:0});
       else rows.push({...base,amount:e.gross!=null?e.gross:e.amount,tax:e.gross!=null?e.tax:0,fee:0}); }
-    for(const tr of d.querySelectorAll("#imp-dt tr")){ if(tr.querySelector(".imp-ov").checked){ const e=dt[+tr.dataset.j]; upd.push({...e.tx,date:e.date}); } }
+    for(const tr of d.querySelectorAll("#imp-dt tr")){ if(tr.querySelector(".imp-ov").checked){ const e=dt[+tr.dataset.j]; const u={...e.tx}; (e.diffs||[["date"]]).forEach(([k])=>{ if(k!=="isin") u[k]=e[k]; }); upd.push(u); } }
     const setCash=d.querySelector("#imp-cash")&&d.querySelector("#imp-cash").checked;
     if(!rows.length&&!upd.length&&!setCash){ closeModal(); toast("Nichts zu übernehmen."); return; }
     const btn=d.querySelector("#imp-go"); btn.disabled=true; btn.textContent="Wird gespeichert …";
@@ -2902,9 +2983,9 @@ function impReview(st,r,prof,fname){
       let added=0, skipped=[];
       if(rows.length){ const res=await api("POST","/api/import",{rows}); added=res.added; skipped=res.skipped||[]; }
       for(const t of upd){ const {symbol,...rest}=t; await api("POST","/api/tx",t.type==="interest"?{tx:{...rest}}:{assetId:symbol,tx:{...rest}}); }
-      if(setCash) await api("POST","/api/cash",{broker:st.broker,amount:Math.max(0,st.saldo),date:st.saldoDate,note:"Laut "+st.source});
+      if(setCash) await api("POST","/api/cash",{broker:st.broker,amount:Math.max(0,st.saldo),date:st.saldoDate,note:"Kontostand laut "+(st.source.includes("Dateien")?"Kontoauszug":st.source)+" vom "+fmtDate(st.saldoDate)});
       closeModal(); await load(); setTimeout(poll,800);
-      toast(`${added} neu, ${upd.length} Datum korrigiert${setCash?", Liquide Mittel gesetzt":""}${skipped.length?", "+skipped.length+" übersprungen":""}`);
+      toast(`${added} neu, ${upd.length} korrigiert${setCash?", Liquide Mittel gesetzt":""}${skipped.length?", "+skipped.length+" übersprungen":""}`);
       if(skipped.length) console.warn("Übersprungen:",skipped);
     }catch(e){ err.textContent=apiMsg(e); btn.disabled=false; btn.textContent="Übernehmen"; }
   };
